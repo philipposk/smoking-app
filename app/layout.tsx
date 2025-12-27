@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { ThemeProvider } from './contexts/ThemeContext'
+import { AppProvider } from './contexts/AppContext'
 
 export const metadata: Metadata = {
-  title: 'Smoking App',
-  description: 'A modern web application',
+  title: 'Smoking App - Find & Connect',
+  description: 'Find smoking places, connect with others, and join the community',
 }
 
 export default function RootLayout({
@@ -13,7 +15,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ThemeProvider>
+          <AppProvider>
+            {children}
+          </AppProvider>
+        </ThemeProvider>
+      </body>
     </html>
   )
 }
