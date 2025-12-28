@@ -33,7 +33,14 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined)
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  // Default user for testing
+  const [user, setUser] = useState<User | null>({
+    id: '1',
+    name: 'paparopapari',
+    email: 'paparopapari@example.com',
+    age: 18,
+    favoritePlaces: [],
+  })
   // Sample data for testing
   const [smokingPlaces, setSmokingPlaces] = useState<SmokingPlace[]>([
     { id: '1', name: 'Kolonaki Square', lat: 37.9838, lng: 23.7275, description: 'Popular outdoor spot in Athens', rating: 4.5 },
