@@ -22,7 +22,7 @@ export default function AboutPage() {
         }}>
           <p style={{ fontSize: '1.1rem', lineHeight: '1.8', marginBottom: '1.5rem' }}>
             Smoking App is created by a team of smoking enthusiasts who want to build a community 
-            around shared interests and passions. We're committed to providing a safe and respectful 
+            around shared interests and passions. We&apos;re committed to providing a safe and respectful 
             environment for users to connect and share their experiences.
           </p>
         </div>
@@ -60,7 +60,7 @@ export default function AboutPage() {
             <div>
               <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Passion Driven</h3>
               <p style={{ color: 'var(--text-secondary)' }}>
-                Created by enthusiasts, for enthusiasts. We understand what you're looking for.
+                Created by enthusiasts, for enthusiasts. We understand what you&apos;re looking for.
               </p>
             </div>
           </div>

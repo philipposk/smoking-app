@@ -1,7 +1,7 @@
 import Header from './components/Header'
 import AIRecommendations from './components/AIRecommendations'
 import Link from 'next/link'
-import { Map, Gallery, MessageSquare, Users, Sparkles } from 'lucide-react'
+import { Map, Images, MessageSquare, Users, Sparkles } from 'lucide-react'
 
 export default function Home() {
   return (
@@ -82,7 +82,7 @@ export default function Home() {
             borderRadius: '12px',
             border: '1px solid var(--border)',
           }}>
-            <Gallery size={40} style={{ marginBottom: '1rem', color: 'var(--accent)' }} />
+            <Images size={40} style={{ marginBottom: '1rem', color: 'var(--accent)' }} />
             <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Gallery</h3>
             <p style={{ color: 'var(--text-secondary)' }}>
               Save and organize your favorite smoking spots

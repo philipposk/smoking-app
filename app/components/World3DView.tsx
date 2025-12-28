@@ -33,15 +33,14 @@ export default function World3DView() {
   ]
 
   useEffect(() => {
-    const filtered = locations.filter(loc => {
-      const query = searchQuery.toLowerCase()
-      return (
-        loc.country.toLowerCase().includes(query) ||
-        loc.city?.toLowerCase().includes(query) ||
-        loc.district?.toLowerCase().includes(query)
-      )
-    })
+    const query = searchQuery.toLowerCase()
+    const filtered = locations.filter(loc => (
+      loc.country.toLowerCase().includes(query) ||
+      loc.city?.toLowerCase().includes(query) ||
+      loc.district?.toLowerCase().includes(query)
+    ))
     setFilteredLocations(filtered)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery])
 
   const handleLocationClick = (location: Location) => {

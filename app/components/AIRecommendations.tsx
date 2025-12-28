@@ -69,7 +69,7 @@ export default function AIRecommendations() {
       >
         {loading ? (
           <>
-            <Loader2 size={20} className="animate-spin" />
+            <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
             Getting recommendations...
           </>
         ) : (

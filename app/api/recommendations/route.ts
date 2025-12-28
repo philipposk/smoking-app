@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
           content: `You are a helpful assistant that recommends smoking places. 
           Provide 3-5 specific recommendations with brief descriptions. 
           Consider user preferences, location, and past favorites. 
-          Format as JSON array with: name, description, whyRecommended fields.`,
+          Return a JSON object with a "recommendations" array. Each recommendation should have: name, description, whyRecommended fields.`,
         },
         {
           role: 'user',

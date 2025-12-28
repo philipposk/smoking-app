@@ -6,9 +6,10 @@ import ViewToggle, { ViewMode } from '../components/ViewToggle'
 import World3DView from '../components/World3DView'
 import { useApp } from '../contexts/AppContext'
 import { QuickSearchWidget, FiltersWidget, TrendingWidget, QuickActionsWidget } from '../components/Widgets'
+import { Heart, MapPin } from 'lucide-react'
 
 export default function MapPage() {
-  const { smokingPlaces } = useApp()
+  const { smokingPlaces, favoritePlaces, addFavoritePlace, removeFavoritePlace } = useApp()
   const [viewMode, setViewMode] = useState<ViewMode>('map')
 
   return (
@@ -25,7 +26,14 @@ export default function MapPage() {
           <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'world' ? '1fr' : '300px 1fr', gap: '2rem' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: viewMode === 'world' ? '1fr' : 'minmax(250px, 300px) 1fr', 
+          gap: '2rem',
+          '@media (max-width: 768px)': {
+            gridTemplateColumns: '1fr',
+          }
+        } as React.CSSProperties}>
           {/* Sidebar with Widgets (hidden in world view) */}
           {viewMode !== 'world' && (
             <aside style={{ display: 'flex', flexDirection: 'column' }}>
@@ -81,27 +89,56 @@ export default function MapPage() {
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {smokingPlaces.map((place) => (
-                      <div
-                        key={place.id}
-                        style={{
-                          padding: '1.5rem',
-                          backgroundColor: 'var(--bg-primary)',
-                          borderRadius: '8px',
-                          border: '1px solid var(--border)',
-                        }}
-                      >
-                        <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{place.name}</h3>
-                        {place.description && (
-                          <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                            {place.description}
-                          </p>
-                        )}
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                          📍 {place.lat.toFixed(4)}, {place.lng.toFixed(4)}
-                        </p>
-                      </div>
-                    ))}
+                    {smokingPlaces.map((place) => {
+                      const isFavorite = favoritePlaces.some(fp => fp.id === place.id)
+                      return (
+                        <div
+                          key={place.id}
+                          style={{
+                            padding: '1.5rem',
+                            backgroundColor: 'var(--bg-primary)',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            gap: '1rem',
+                          }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{place.name}</h3>
+                            {place.description && (
+                              <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                                {place.description}
+                              </p>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                              <MapPin size={16} />
+                              <span>{place.lat.toFixed(4)}, {place.lng.toFixed(4)}</span>
+                              {place.rating && (
+                                <>
+                                  <span>•</span>
+                                  <span>⭐ {place.rating}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => isFavorite ? removeFavoritePlace(place.id) : addFavoritePlace(place)}
+                            style={{
+                              padding: '0.5rem',
+                              background: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: isFavorite ? 'var(--accent)' : 'var(--text-secondary)',
+                            }}
+                            title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                          >
+                            <Heart size={20} fill={isFavorite ? 'var(--accent)' : 'none'} />
+                          </button>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
