@@ -66,12 +66,41 @@ export default function MapPage() {
                 minHeight: '600px',
               }}>
                 <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Map View</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>
-                  Google Maps integration coming soon
-                </p>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                  Add your Google Maps API key to enable map functionality
-                </p>
+                <div style={{ 
+                  backgroundColor: 'var(--bg-primary)', 
+                  padding: '2rem', 
+                  borderRadius: '12px',
+                  border: '1px solid var(--border)',
+                  maxWidth: '600px',
+                  textAlign: 'center',
+                }}>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                    🗺️ Interactive map with Google Maps integration
+                  </p>
+                  {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+                    <p style={{ color: 'var(--accent)', fontSize: '0.9rem' }}>
+                      ✅ Google Maps API key configured
+                    </p>
+                  ) : (
+                    <>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                        To enable map functionality, add your Google Maps API key:
+                      </p>
+                      <div style={{
+                        backgroundColor: 'var(--bg-secondary)',
+                        padding: '1rem',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        textAlign: 'left',
+                        marginTop: '1rem',
+                      }}>
+                        <p style={{ marginBottom: '0.5rem' }}>1. Get API key: <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Google Cloud Console</a></p>
+                        <p style={{ marginBottom: '0.5rem' }}>2. Add to Vercel: <code style={{ backgroundColor: 'var(--bg-tertiary)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code></p>
+                        <p>3. Map will automatically load after redeploy</p>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             ) : (
               <div style={{

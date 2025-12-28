@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useApp } from '../contexts/AppContext'
 import { MapPin, Search, Filter } from 'lucide-react'
 
@@ -16,7 +17,8 @@ interface Location {
 }
 
 export default function World3DView() {
-  const { smokingPlaces } = useApp()
+  const router = useRouter()
+  const { smokingPlaces, setSmokingPlaces } = useApp()
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filteredLocations, setFilteredLocations] = useState<Location[]>([])
@@ -45,6 +47,11 @@ export default function World3DView() {
 
   const handleLocationClick = (location: Location) => {
     setSelectedLocation(location)
+  }
+
+  const handleExploreLocation = (location: Location) => {
+    // Navigate to map page with location filter
+    router.push(`/map?location=${encodeURIComponent(location.city || location.country)}&lat=${location.lat}&lng=${location.lng}`)
   }
 
   return (
@@ -236,7 +243,10 @@ export default function World3DView() {
               <strong>{selectedLocation.shops}</strong>
             </div>
           </div>
-          <button style={{ width: '100%' }}>
+          <button 
+            onClick={() => selectedLocation && handleExploreLocation(selectedLocation)}
+            style={{ width: '100%' }}
+          >
             Explore {selectedLocation.city || selectedLocation.country}
           </button>
         </div>
