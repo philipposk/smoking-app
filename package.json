@@ -13,7 +13,8 @@
     "react-dom": "^18.3.1",
     "next": "^14.2.5",
     "@react-google-maps/api": "^2.19.3",
-    "lucide-react": "^0.344.0"
+    "lucide-react": "^0.344.0",
+    "openai": "^4.47.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",

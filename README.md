@@ -67,7 +67,45 @@ For `smoking.6x7.gr` domain:
 
 Create a `.env.local` file for local development:
 
+```bash
+# OpenAI API Key (required for AI recommendations)
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Google Maps API Key (for map functionality)
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+
+# Social Media API Keys (optional)
+FACEBOOK_APP_ID=your_facebook_app_id
+TWITTER_API_KEY=your_twitter_api_key
+INSTAGRAM_CLIENT_ID=your_instagram_client_id
+
+# Database (if using external service)
+DATABASE_URL=your_database_url_here
 ```
-# Add your API keys here
-```
+
+## AI Integration
+
+This app uses **direct OpenAI API integration** for AI-powered recommendations. This approach is:
+- ✅ **Simpler** - Direct API calls, no additional framework needed
+- ✅ **More flexible** - Full control over prompts and responses
+- ✅ **Better for recommendations** - Optimized for structured data output
+- ✅ **Cost-effective** - Pay only for what you use
+
+### Why not ChatKit?
+
+[OpenAI ChatKit](https://github.com/openai/openai-chatkit-starter-app) is great for **conversational chat interfaces**, but for this app:
+- We need structured recommendations, not chat
+- Direct API gives more control over the recommendation logic
+- Simpler integration with existing Next.js structure
+
+If you want to add a conversational AI assistant later, ChatKit could be added as an additional feature.
+
+## Features
+
+- 🗺️ **Map View** - Find smoking places with Google Maps
+- 🖼️ **Gallery** - Save and organize favorite spots
+- 💬 **Community Forum** - Connect with others
+- 🤖 **AI Recommendations** - Get personalized suggestions
+- 🌓 **Dark/Light Theme** - Toggle between themes
+- 👤 **User Profiles** - Manage your account and preferences
 

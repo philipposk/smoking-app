@@ -1,4 +1,5 @@
 import Header from './components/Header'
+import AIRecommendations from './components/AIRecommendations'
 import Link from 'next/link'
 import { Map, Gallery, MessageSquare, Users, Sparkles } from 'lucide-react'
 
@@ -113,6 +114,10 @@ export default function Home() {
               Get personalized suggestions based on your preferences
             </p>
           </div>
+        </section>
+
+        <section style={{ marginTop: '4rem' }}>
+          <AIRecommendations />
         </section>
       </main>
     </>
