@@ -1,14 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import Groq from 'groq-sdk'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-const groq = process.env.GROQ_API_KEY ? new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-}) : null
+// Lazy load Groq to avoid build issues
+let Groq: any = null
+let groq: any = null
+
+function getGroqClient() {
+  if (!process.env.GROQ_API_KEY) return null
+  
+  if (!Groq) {
+    try {
+      Groq = require('groq-sdk')
+      groq = new Groq({
+        apiKey: process.env.GROQ_API_KEY,
+      })
+    } catch (error) {
+      console.error('Failed to load Groq SDK:', error)
+      return null
+    }
+  }
+  
+  return groq
+}
 
 interface RecommendationRequest {
   userPreferences?: string[]
@@ -39,10 +56,20 @@ export async function POST(request: NextRequest) {
 
     let completion
     
-    if (useGroq && groq) {
-      // Use Groq AI - Note: Groq may not support response_format
-      try {
-        completion = await groq.chat.completions.create({
+    if (useGroq) {
+      const groqClient = getGroqClient()
+      if (!groqClient) {
+        // Fallback to OpenAI if Groq not available
+        if (!process.env.OPENAI_API_KEY) {
+          return NextResponse.json(
+            { error: 'Groq API key not configured and OpenAI not available' },
+            { status: 500 }
+          )
+        }
+      } else {
+        // Use Groq AI
+        try {
+          completion = await groqClient.chat.completions.create({
           model: 'llama-3.1-70b-versatile',
           messages: [
             {
@@ -58,33 +85,46 @@ export async function POST(request: NextRequest) {
             },
           ],
           temperature: 0.7,
-        })
-      } catch (groqError: any) {
-        console.error('Groq API error, falling back to OpenAI:', groqError.message)
-        // Fallback to OpenAI if Groq fails
-        if (!process.env.OPENAI_API_KEY) {
-          throw new Error(`Groq failed: ${groqError.message}`)
+          })
+        } catch (groqError: any) {
+          console.error('Groq API error, falling back to OpenAI:', groqError.message)
+          // Fallback to OpenAI if Groq fails
+          if (!process.env.OPENAI_API_KEY) {
+            throw new Error(`Groq failed: ${groqError.message}`)
+          }
+          completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'system',
+                content: `You are a helpful assistant that recommends smoking places. 
+                Provide 3-5 specific recommendations with brief descriptions. 
+                Consider user preferences, location, and past favorites. 
+                Return a JSON object with a "recommendations" array. Each recommendation should have: name, description, whyRecommended fields.`,
+              },
+              {
+                role: 'user',
+                content: `Based on this context, recommend smoking places: ${context}`,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.7,
+          })
         }
-        completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: `You are a helpful assistant that recommends smoking places. 
-              Provide 3-5 specific recommendations with brief descriptions. 
-              Consider user preferences, location, and past favorites. 
-              Return a JSON object with a "recommendations" array. Each recommendation should have: name, description, whyRecommended fields.`,
-            },
-            {
-              role: 'user',
-              content: `Based on this context, recommend smoking places: ${context}`,
-            },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.7,
-        })
+        // If Groq client not available, fall through to OpenAI
+        if (!completion) {
+          if (!process.env.OPENAI_API_KEY) {
+            return NextResponse.json(
+              { error: 'No AI API key configured' },
+              { status: 500 }
+            )
+          }
+        }
       }
-    } else {
+    }
+    
+    if (!completion) {
+      // Use OpenAI as default
       // Use OpenAI
       completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
