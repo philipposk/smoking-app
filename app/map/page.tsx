@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Header from '../components/Header'
 import ViewToggle, { ViewMode } from '../components/ViewToggle'
 import World3DView from '../components/World3DView'
@@ -8,9 +9,23 @@ import { useApp } from '../contexts/AppContext'
 import { QuickSearchWidget, FiltersWidget, TrendingWidget, QuickActionsWidget } from '../components/Widgets'
 import { Heart, MapPin } from 'lucide-react'
 
-export default function MapPage() {
+function MapPageContent() {
+  const searchParams = useSearchParams()
   const { smokingPlaces, favoritePlaces, addFavoritePlace, removeFavoritePlace } = useApp()
   const [viewMode, setViewMode] = useState<ViewMode>('map')
+
+  useEffect(() => {
+    // Handle location filter from URL (from Explore button)
+    const location = searchParams.get('location')
+    const lat = searchParams.get('lat')
+    const lng = searchParams.get('lng')
+    
+    if (location && lat && lng) {
+      // Switch to map view when coming from Explore button
+      setViewMode('map')
+      // In future: filter smokingPlaces by location coordinates
+    }
+  }, [searchParams])
 
   return (
     <>
@@ -176,6 +191,14 @@ export default function MapPage() {
         </div>
       </main>
     </>
+  )
+}
+
+export default function MapPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <MapPageContent />
+    </Suspense>
   )
 }
 
