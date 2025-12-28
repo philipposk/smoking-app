@@ -5,26 +5,20 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-// Lazy load Groq to avoid build issues
-let Groq: any = null
-let groq: any = null
-
-function getGroqClient() {
+// Lazy load Groq to avoid build issues - use dynamic import
+async function getGroqClient() {
   if (!process.env.GROQ_API_KEY) return null
   
-  if (!Groq) {
-    try {
-      Groq = require('groq-sdk')
-      groq = new Groq({
-        apiKey: process.env.GROQ_API_KEY,
-      })
-    } catch (error) {
-      console.error('Failed to load Groq SDK:', error)
-      return null
-    }
+  try {
+    // Use dynamic import to avoid bundling during build
+    const Groq = (await import('groq-sdk')).default
+    return new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    })
+  } catch (error) {
+    console.error('Failed to load Groq SDK:', error)
+    return null
   }
-  
-  return groq
 }
 
 interface RecommendationRequest {
@@ -37,7 +31,7 @@ interface RecommendationRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: RecommendationRequest = await request.json()
-    const useGroq = body.useGroq === true && groq && process.env.GROQ_API_KEY
+    const useGroq = body.useGroq === true && process.env.GROQ_API_KEY
 
     if (!process.env.OPENAI_API_KEY && !process.env.GROQ_API_KEY) {
       return NextResponse.json(
@@ -57,7 +51,7 @@ export async function POST(request: NextRequest) {
     let completion
     
     if (useGroq) {
-      const groqClient = getGroqClient()
+      const groqClient = await getGroqClient()
       if (!groqClient) {
         // Fallback to OpenAI if Groq not available
         if (!process.env.OPENAI_API_KEY) {
@@ -111,20 +105,17 @@ export async function POST(request: NextRequest) {
             temperature: 0.7,
           })
         }
-        // If Groq client not available, fall through to OpenAI
-        if (!completion) {
-          if (!process.env.OPENAI_API_KEY) {
-            return NextResponse.json(
-              { error: 'No AI API key configured' },
-              { status: 500 }
-            )
-          }
-        }
       }
     }
     
     if (!completion) {
       // Use OpenAI as default
+      if (!process.env.OPENAI_API_KEY) {
+        return NextResponse.json(
+          { error: 'No AI API key configured' },
+          { status: 500 }
+        )
+      }
       // Use OpenAI
       completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
