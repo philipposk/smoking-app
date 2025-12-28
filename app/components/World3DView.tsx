@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '../contexts/AppContext'
+import GooglePlacesSync from './GooglePlacesSync'
 import { MapPin, Search, Filter } from 'lucide-react'
 
 interface Location {
@@ -217,13 +218,15 @@ export default function World3DView() {
           position: 'absolute',
           top: '5rem',
           right: '1rem',
-          width: '300px',
+          width: '320px',
           backgroundColor: 'var(--bg-primary)',
           borderRadius: '12px',
           border: '1px solid var(--border)',
           padding: '1.5rem',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           zIndex: 10,
+          maxHeight: '80vh',
+          overflowY: 'auto',
         }}>
           <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>
             {selectedLocation.city ? `${selectedLocation.city}, ${selectedLocation.country}` : selectedLocation.country}
@@ -245,10 +248,22 @@ export default function World3DView() {
           </div>
           <button 
             onClick={() => selectedLocation && handleExploreLocation(selectedLocation)}
-            style={{ width: '100%' }}
+            style={{ width: '100%', marginBottom: '1rem' }}
           >
             Explore {selectedLocation.city || selectedLocation.country}
           </button>
+          <div style={{
+            paddingTop: '1rem',
+            borderTop: '1px solid var(--border)',
+          }}>
+            <GooglePlacesSync
+              location={selectedLocation.city ? `${selectedLocation.city}, ${selectedLocation.country}` : selectedLocation.country}
+              onSyncComplete={(places) => {
+                // In future: add synced places to the map
+                console.log('Synced places:', places)
+              }}
+            />
+          </div>
         </div>
       )}
     </div>

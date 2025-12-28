@@ -7,12 +7,19 @@ import ViewToggle, { ViewMode } from '../components/ViewToggle'
 import World3DView from '../components/World3DView'
 import { useApp } from '../contexts/AppContext'
 import { QuickSearchWidget, FiltersWidget, TrendingWidget, QuickActionsWidget } from '../components/Widgets'
-import { Heart, MapPin } from 'lucide-react'
+import GoogleMap from '../components/GoogleMap'
+import AddPlaceForm from '../components/AddPlaceForm'
+import ReviewSystem from '../components/ReviewSystem'
+import MerchantClaimForm from '../components/MerchantClaimForm'
+import { Heart, MapPin, Plus, Building2 } from 'lucide-react'
 
 function MapPageContent() {
   const searchParams = useSearchParams()
-  const { smokingPlaces, favoritePlaces, addFavoritePlace, removeFavoritePlace } = useApp()
+  const { smokingPlaces, favoritePlaces, addFavoritePlace, removeFavoritePlace, setSmokingPlaces } = useApp()
   const [viewMode, setViewMode] = useState<ViewMode>('map')
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [selectedPlace, setSelectedPlace] = useState<string | null>(null)
+  const [claimingPlace, setClaimingPlace] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     // Handle location filter from URL (from Explore button)
@@ -36,9 +43,21 @@ function MapPageContent() {
         maxWidth: '1600px',
         margin: '0 auto',
       }}>
-        {/* View Toggle */}
-        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'center' }}>
+        {/* View Toggle and Add Button */}
+        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
+          <button
+            onClick={() => setShowAddForm(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1.5rem',
+            }}
+          >
+            <Plus size={20} />
+            Add Place
+          </button>
         </div>
 
         <div style={{ 
@@ -68,55 +87,14 @@ function MapPageContent() {
             {viewMode === 'world' ? (
               <World3DView />
             ) : viewMode === 'map' ? (
-              <div style={{
-                width: '100%',
-                height: '100%',
-                backgroundColor: 'var(--bg-secondary)',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'column',
-                gap: '1rem',
-                minHeight: '600px',
-              }}>
-                <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Map View</h2>
-                <div style={{ 
-                  backgroundColor: 'var(--bg-primary)', 
-                  padding: '2rem', 
-                  borderRadius: '12px',
-                  border: '1px solid var(--border)',
-                  maxWidth: '600px',
-                  textAlign: 'center',
-                }}>
-                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                    🗺️ Interactive map with Google Maps integration
-                  </p>
-                  {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
-                    <p style={{ color: 'var(--accent)', fontSize: '0.9rem' }}>
-                      ✅ Google Maps API key configured
-                    </p>
-                  ) : (
-                    <>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                        To enable map functionality, add your Google Maps API key:
-                      </p>
-                      <div style={{
-                        backgroundColor: 'var(--bg-secondary)',
-                        padding: '1rem',
-                        borderRadius: '8px',
-                        fontSize: '0.85rem',
-                        textAlign: 'left',
-                        marginTop: '1rem',
-                      }}>
-                        <p style={{ marginBottom: '0.5rem' }}>1. Get API key: <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Google Cloud Console</a></p>
-                        <p style={{ marginBottom: '0.5rem' }}>2. Add to Vercel: <code style={{ backgroundColor: 'var(--bg-tertiary)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code></p>
-                        <p>3. Map will automatically load after redeploy</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
+              <GoogleMap 
+                center={searchParams.get('lat') && searchParams.get('lng') ? {
+                  lat: parseFloat(searchParams.get('lat')!),
+                  lng: parseFloat(searchParams.get('lng')!),
+                } : undefined}
+                zoom={searchParams.get('lat') ? 15 : 13}
+                places={smokingPlaces}
+              />
             ) : (
               <div style={{
                 width: '100%',
@@ -136,50 +114,88 @@ function MapPageContent() {
                     {smokingPlaces.map((place) => {
                       const isFavorite = favoritePlaces.some(fp => fp.id === place.id)
                       return (
-                        <div
-                          key={place.id}
-                          style={{
-                            padding: '1.5rem',
-                            backgroundColor: 'var(--bg-primary)',
-                            borderRadius: '8px',
-                            border: '1px solid var(--border)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-start',
-                            gap: '1rem',
-                          }}
-                        >
-                          <div style={{ flex: 1 }}>
-                            <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{place.name}</h3>
-                            {place.description && (
-                              <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                                {place.description}
-                              </p>
-                            )}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                              <MapPin size={16} />
-                              <span>{place.lat.toFixed(4)}, {place.lng.toFixed(4)}</span>
-                              {place.rating && (
-                                <>
-                                  <span>•</span>
-                                  <span>⭐ {place.rating}</span>
-                                </>
+                        <div key={place.id}>
+                          <div
+                            style={{
+                              padding: '1.5rem',
+                              backgroundColor: 'var(--bg-primary)',
+                              borderRadius: '8px',
+                              border: '1px solid var(--border)',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'flex-start',
+                              gap: '1rem',
+                              marginBottom: '1rem',
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{place.name}</h3>
+                              {place.description && (
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                                  {place.description}
+                                </p>
                               )}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                <MapPin size={16} />
+                                <span>{place.lat.toFixed(4)}, {place.lng.toFixed(4)}</span>
+                                {place.rating && (
+                                  <>
+                                    <span>•</span>
+                                    <span>⭐ {place.rating}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                              <button
+                                onClick={() => setSelectedPlace(selectedPlace === place.id ? null : place.id)}
+                                style={{
+                                  padding: '0.5rem',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--text-secondary)',
+                                  fontSize: '0.85rem',
+                                }}
+                                title="View reviews"
+                              >
+                                💬
+                              </button>
+                              <button
+                                onClick={() => setClaimingPlace({ id: place.id, name: place.name })}
+                                style={{
+                                  padding: '0.5rem',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--text-secondary)',
+                                }}
+                                title="Claim as merchant"
+                              >
+                                <Building2 size={18} />
+                              </button>
+                              <button
+                                onClick={() => isFavorite ? removeFavoritePlace(place.id) : addFavoritePlace(place)}
+                                style={{
+                                  padding: '0.5rem',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: isFavorite ? 'var(--accent)' : 'var(--text-secondary)',
+                                }}
+                                title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                              >
+                                <Heart size={20} fill={isFavorite ? 'var(--accent)' : 'none'} />
+                              </button>
                             </div>
                           </div>
-                          <button
-                            onClick={() => isFavorite ? removeFavoritePlace(place.id) : addFavoritePlace(place)}
-                            style={{
-                              padding: '0.5rem',
-                              background: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: isFavorite ? 'var(--accent)' : 'var(--text-secondary)',
-                            }}
-                            title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                          >
-                            <Heart size={20} fill={isFavorite ? 'var(--accent)' : 'none'} />
-                          </button>
+                          {selectedPlace === place.id && (
+                            <ReviewSystem
+                              placeId={place.id}
+                              placeName={place.name}
+                              currentRating={place.rating}
+                            />
+                          )}
                         </div>
                       )
                     })}
@@ -189,6 +205,44 @@ function MapPageContent() {
             )}
           </div>
         </div>
+
+        {/* Add Place Form Modal */}
+        {showAddForm && (
+          <AddPlaceForm
+            onClose={() => setShowAddForm(false)}
+            onSuccess={async () => {
+              // Refresh places from API
+              try {
+                const response = await fetch('/api/places')
+                const data = await response.json()
+                setSmokingPlaces(data.places || [])
+              } catch (error) {
+                console.error('Failed to refresh places:', error)
+              }
+            }}
+            initialLocation={
+              searchParams.get('lat') && searchParams.get('lng')
+                ? {
+                    lat: parseFloat(searchParams.get('lat')!),
+                    lng: parseFloat(searchParams.get('lng')!),
+                  }
+                : undefined
+            }
+          />
+        )}
+
+        {/* Merchant Claim Form Modal */}
+        {claimingPlace && (
+          <MerchantClaimForm
+            placeId={claimingPlace.id}
+            placeName={claimingPlace.name}
+            onClose={() => setClaimingPlace(null)}
+            onSuccess={() => {
+              // Refresh or show success message
+              setClaimingPlace(null)
+            }}
+          />
+        )}
       </main>
     </>
   )
