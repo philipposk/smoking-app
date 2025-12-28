@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AppProvider } from './contexts/AppContext'
+import { AuthProvider } from './contexts/AuthContext'
 
 export const metadata: Metadata = {
   title: 'Smoking App - Find & Connect',
@@ -17,9 +18,11 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ThemeProvider>
-          <AppProvider>
-            {children}
-          </AppProvider>
+          <AuthProvider>
+            <AppProvider>
+              {children}
+            </AppProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -1,11 +1,16 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useTheme } from '../contexts/ThemeContext'
-import { Moon, Sun, Map, Images, MessageSquare, User } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import LoginModal from './LoginModal'
+import { Moon, Sun, Map, Images, MessageSquare, User, LogOut } from 'lucide-react'
 
 export default function Header() {
   const { theme, toggleTheme } = useTheme()
+  const { user, logout } = useAuth()
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
   return (
     <header style={{
@@ -43,6 +48,41 @@ export default function Header() {
         <Link href="/about" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
           About
         </Link>
+        {user ? (
+          <>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              {user.username}
+            </span>
+            <button
+              onClick={logout}
+              style={{
+                background: 'transparent',
+                padding: '0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+              }}
+              title="Logout"
+            >
+              <LogOut size={20} />
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setShowLoginModal(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 1rem',
+              fontSize: '0.9rem',
+            }}
+          >
+            <User size={18} />
+            Login
+          </button>
+        )}
         <button
           onClick={toggleTheme}
           style={{
@@ -57,6 +97,9 @@ export default function Header() {
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
       </nav>
+      {showLoginModal && (
+        <LoginModal onClose={() => setShowLoginModal(false)} />
+      )}
     </header>
   )
 }
