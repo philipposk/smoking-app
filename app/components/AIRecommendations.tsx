@@ -15,6 +15,7 @@ export default function AIRecommendations() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [useGroq, setUseGroq] = useState(false)
 
   const getRecommendations = async () => {
     setLoading(true)
@@ -27,6 +28,7 @@ export default function AIRecommendations() {
         body: JSON.stringify({
           favoritePlaces: favoritePlaces.map(p => p.name),
           userPreferences: ['outdoor', 'comfortable'],
+          useGroq: useGroq,
         }),
       })
 
@@ -56,17 +58,29 @@ export default function AIRecommendations() {
         <h2 style={{ fontSize: '1.5rem' }}>AI Recommendations</h2>
       </div>
 
-      <button
-        onClick={getRecommendations}
-        disabled={loading}
-        style={{
-          marginBottom: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          opacity: loading ? 0.6 : 1,
-        }}
-      >
+      <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <input
+            type="checkbox"
+            id="useGroq"
+            checked={useGroq}
+            onChange={(e) => setUseGroq(e.target.checked)}
+            style={{ cursor: 'pointer' }}
+          />
+          <label htmlFor="useGroq" style={{ cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+            Use Groq AI (faster, free tier available)
+          </label>
+        </div>
+        <button
+          onClick={getRecommendations}
+          disabled={loading}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            opacity: loading ? 0.6 : 1,
+          }}
+        >
         {loading ? (
           <>
             <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
@@ -75,10 +89,11 @@ export default function AIRecommendations() {
         ) : (
           <>
             <Sparkles size={20} />
-            Get AI Recommendations
+            Get AI Recommendations {useGroq ? '(Groq)' : '(OpenAI)'}
           </>
         )}
       </button>
+      </div>
 
       {error && (
         <div style={{
