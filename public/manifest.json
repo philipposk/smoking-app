@@ -1,0 +1,21 @@
+{
+  "name": "Smoking — A field guide",
+  "short_name": "Smoking",
+  "description": "Worldwide directory of smoke-friendly places, tobacco shops, benches, and designated smoking areas.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EFEAE0",
+  "theme_color": "#B9421A",
+  "lang": "en",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["travel", "lifestyle", "maps"]
+}

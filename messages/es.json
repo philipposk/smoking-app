@@ -1,0 +1,76 @@
+{
+  "header": {
+    "brand": "Smoking",
+    "nav": { "home": "Índice", "places": "Lugares", "saved": "Guardados", "forum": "Foro" },
+    "searchPlaceholder": "Buscar lugares…",
+    "nearMe": "Cerca de mí",
+    "addPlace": "Enviar un lugar",
+    "themeToggle": "Cambiar tema",
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión"
+  },
+  "auth": {
+    "welcomeBack": "Bienvenido de nuevo",
+    "createAccount": "Crear cuenta",
+    "signUpTitle": "Regístrate en Smoking.",
+    "signInTitle": "Inicia sesión en Smoking.",
+    "lede": "Guarda lugares, publica en el foro, reclama listados. Sin perfil público hasta que lo completes.",
+    "usernameLabelSignup": "Usuario (3+ caracteres, a-z 0-9 _.-)",
+    "usernameLabelSignin": "Usuario o correo",
+    "emailLabel": "Correo electrónico",
+    "passwordLabel": "Contraseña",
+    "passwordLabelSignup": "Contraseña (8+ caracteres)",
+    "switchToSignin": "¿Tienes cuenta? Inicia sesión",
+    "switchToSignup": "¿Nuevo aquí? Regístrate",
+    "submitSignup": "Crear cuenta",
+    "submitSignin": "Iniciar sesión"
+  },
+  "addPlace": {
+    "title": "Añadir un lugar.",
+    "lede": "Comparte un lugar que merezca ser conocido. Otros lectores lo verán una vez que un moderador confirme que no es spam.",
+    "name": "Nombre",
+    "type": "Tipo",
+    "location": "Ubicación",
+    "useMyLocation": "Usar mi ubicación",
+    "latitude": "Latitud",
+    "longitude": "Longitud",
+    "country": "País",
+    "city": "Ciudad",
+    "neighborhood": "Barrio",
+    "description": "Descripción (opcional)",
+    "cancel": "Cancelar",
+    "submit": "Enviar",
+    "errLatLng": "Se requieren latitud y longitud (usa el botón 'Usar mi ubicación')."
+  },
+  "forum": {
+    "eyebrow": "Correspondencia del lector",
+    "title": "Cartas.",
+    "lede": "Preguntas, hallazgos, quejas, recomendaciones. De lectores, para lectores.",
+    "writeBtn": "Escribir una carta",
+    "composeTitlePlaceholder": "Un título — di lo que piensas.",
+    "composeBodyPlaceholder": "La pregunta, el hallazgo, la queja.",
+    "tagsPlaceholder": "#etiquetas, separadas por comas",
+    "cancel": "Cancelar",
+    "post": "Publicar",
+    "signInToPost": "Inicia sesión para publicar."
+  },
+  "saved": {
+    "eyebrow": "Índice personal",
+    "title": "Tus guardados.",
+    "spot": "lugar",
+    "spots": "lugares",
+    "kept": "guardados",
+    "emptyTitle": "Nada guardado aún.",
+    "emptyLede": "Abre el mapa y toca el corazón en los lugares que valga la pena volver a visitar. Se reunirán aquí, en orden.",
+    "emptyCta": "Abrir el mapa"
+  },
+  "common": {
+    "submitting": "Enviando…",
+    "loading": "Cargando…",
+    "close": "Cerrar",
+    "tryAgain": "Reintentar",
+    "networkError": "Error de red.",
+    "unauthorized": "Debes iniciar sesión.",
+    "tooManyRequests": "Demasiadas solicitudes. Reduce la velocidad."
+  }
+}

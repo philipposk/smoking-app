@@ -1,0 +1,76 @@
+{
+  "header": {
+    "brand": "Smoking",
+    "nav": { "home": "الفهرس", "places": "الأماكن", "saved": "المحفوظات", "forum": "المنتدى" },
+    "searchPlaceholder": "ابحث عن الأماكن…",
+    "nearMe": "بالقرب مني",
+    "addPlace": "أضف مكانًا",
+    "themeToggle": "تبديل المظهر",
+    "signIn": "تسجيل الدخول",
+    "signOut": "تسجيل الخروج"
+  },
+  "auth": {
+    "welcomeBack": "أهلاً بعودتك",
+    "createAccount": "إنشاء حساب",
+    "signUpTitle": "سجّل في Smoking.",
+    "signInTitle": "سجّل الدخول إلى Smoking.",
+    "lede": "احفظ الأماكن، انشر في المنتدى، طالب بقوائمك. لا ملف عام حتى تملأه.",
+    "usernameLabelSignup": "اسم المستخدم (3+ أحرف، a-z 0-9 _.-)",
+    "usernameLabelSignin": "اسم المستخدم أو البريد الإلكتروني",
+    "emailLabel": "البريد الإلكتروني",
+    "passwordLabel": "كلمة المرور",
+    "passwordLabelSignup": "كلمة المرور (8+ أحرف)",
+    "switchToSignin": "لديك حساب؟ سجّل الدخول",
+    "switchToSignup": "جديد هنا؟ سجّل",
+    "submitSignup": "إنشاء حساب",
+    "submitSignin": "تسجيل الدخول"
+  },
+  "addPlace": {
+    "title": "إضافة مكان.",
+    "lede": "شارك مكانًا يستحق المعرفة. سيراه القراء الآخرون بعد أن يؤكد المشرف أنه ليس بريدًا مزعجًا.",
+    "name": "الاسم",
+    "type": "النوع",
+    "location": "الموقع",
+    "useMyLocation": "استخدم موقعي",
+    "latitude": "خط العرض",
+    "longitude": "خط الطول",
+    "country": "البلد",
+    "city": "المدينة",
+    "neighborhood": "الحي",
+    "description": "الوصف (اختياري)",
+    "cancel": "إلغاء",
+    "submit": "إرسال",
+    "errLatLng": "خط العرض والطول مطلوبان (استخدم زر 'استخدم موقعي')."
+  },
+  "forum": {
+    "eyebrow": "مراسلات القرّاء",
+    "title": "رسائل.",
+    "lede": "أسئلة، اكتشافات، شكاوى، توصيات. من القراء، للقراء.",
+    "writeBtn": "اكتب رسالة",
+    "composeTitlePlaceholder": "عنوان — قل ما تقصد.",
+    "composeBodyPlaceholder": "السؤال، الاكتشاف، الشكوى.",
+    "tagsPlaceholder": "#وسوم، مفصولة بفواصل",
+    "cancel": "إلغاء",
+    "post": "نشر",
+    "signInToPost": "سجّل الدخول للنشر."
+  },
+  "saved": {
+    "eyebrow": "فهرس شخصي",
+    "title": "محفوظاتك.",
+    "spot": "مكان",
+    "spots": "أماكن",
+    "kept": "محفوظ",
+    "emptyTitle": "لا شيء محفوظ بعد.",
+    "emptyLede": "افتح الخريطة واضغط على القلب في الأماكن التي تستحق العودة. ستتجمع هنا، بالترتيب.",
+    "emptyCta": "افتح الخريطة"
+  },
+  "common": {
+    "submitting": "جاري الإرسال…",
+    "loading": "جاري التحميل…",
+    "close": "إغلاق",
+    "tryAgain": "حاول مرة أخرى",
+    "networkError": "خطأ في الشبكة.",
+    "unauthorized": "يجب تسجيل الدخول.",
+    "tooManyRequests": "طلبات كثيرة جدًا. تمهّل."
+  }
+}

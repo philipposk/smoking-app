@@ -1,102 +1,55 @@
-import { NextRequest, NextResponse } from 'next/server'
-
-interface ForumPost {
-  id: string
-  title: string
-  content: string
-  author: string
-  authorId: string
-  createdAt: string
-  replies?: ForumReply[]
-  likes?: number
-  tags?: string[]
-}
-
-interface ForumReply {
-  id: string
-  postId: string
-  content: string
-  author: string
-  authorId: string
-  createdAt: string
-  likes?: number
-}
-
-// In-memory storage (replace with database later)
-let posts: ForumPost[] = [
-  {
-    id: '1',
-    title: 'Best smoking spots in Athens?',
-    content: 'Looking for recommendations for good outdoor smoking spots in Athens. Any hidden gems?',
-    author: 'paparopapari',
-    authorId: '1',
-    createdAt: new Date().toISOString(),
-    replies: [],
-    likes: 5,
-    tags: ['athens', 'spots', 'recommendations'],
-  },
-  {
-    id: '2',
-    title: 'Where to find big rolling papers in Thailand?',
-    content: 'Having trouble finding large rolling papers here. Any shop recommendations?',
-    author: 'paparopapari',
-    authorId: '1',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    replies: [],
-    likes: 3,
-    tags: ['thailand', 'shops', 'rolling-papers'],
-  },
-]
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireWriter } from '@/lib/auth/session';
+import { writeLimit } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const tag = searchParams.get('tag')
-  const search = searchParams.get('search')
+  const p = request.nextUrl.searchParams;
+  const search = p.get('search');
+  const category = p.get('category');
+  const limit = Math.min(parseInt(p.get('limit') ?? '50', 10) || 50, 200);
 
-  let filteredPosts = [...posts]
+  let q = supabaseAdmin()
+    .from('forum_posts')
+    .select('id, user_id, title, body, category, created_at, users:users(username, avatar_url)')
+    .order('created_at', { ascending: false })
+    .limit(limit);
 
-  if (tag) {
-    filteredPosts = filteredPosts.filter(post => post.tags?.includes(tag))
-  }
+  if (category) q = q.eq('category', category);
+  if (search) q = q.or(`title.ilike.%${search}%,body.ilike.%${search}%`);
 
-  if (search) {
-    const searchLower = search.toLowerCase()
-    filteredPosts = filteredPosts.filter(post =>
-      post.title.toLowerCase().includes(searchLower) ||
-      post.content.toLowerCase().includes(searchLower)
-    )
-  }
-
-  // Sort by date (newest first)
-  filteredPosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-
-  return NextResponse.json({ posts: filteredPosts })
+  const { data, error } = await q;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ posts: data ?? [] });
 }
+
+const Body = z.object({
+  title: z.string().trim().min(3).max(200),
+  body: z.string().trim().min(1).max(10_000),
+  category: z.string().max(40).optional(),
+});
 
 export async function POST(request: NextRequest) {
+  const blocked = writeLimit.check(request, 'forum-post');
+  if (blocked) return blocked;
+  const gate = await requireWriter();
+  if ('status' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status });
+  const user = gate;
+
+  let parsed;
   try {
-    const body = await request.json()
-
-    const newPost: ForumPost = {
-      id: Date.now().toString(),
-      title: body.title,
-      content: body.content,
-      author: body.author || 'paparopapari',
-      authorId: body.authorId || '1',
-      createdAt: new Date().toISOString(),
-      replies: [],
-      likes: 0,
-      tags: body.tags || [],
-    }
-
-    posts.push(newPost)
-
-    return NextResponse.json({ post: newPost, message: 'Post created successfully' })
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: 'Failed to create post', details: error.message },
-      { status: 500 }
-    )
+    parsed = Body.parse(await request.json());
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
   }
-}
 
+  const { data, error } = await supabaseAdmin()
+    .from('forum_posts')
+    .insert({ ...parsed, user_id: user.id })
+    .select('*')
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ post: data });
+}

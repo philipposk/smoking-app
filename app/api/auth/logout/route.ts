@@ -1,17 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server';
+import { destroySession } from '@/lib/auth/session';
 
-export async function POST(request: NextRequest) {
-  try {
-    const cookieStore = cookies()
-    cookieStore.delete('session')
-
-    return NextResponse.json({ message: 'Logged out successfully' })
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: 'Failed to logout', details: error.message },
-      { status: 500 }
-    )
-  }
+export async function POST() {
+  await destroySession();
+  return NextResponse.json({ ok: true });
 }
-

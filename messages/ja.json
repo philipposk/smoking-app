@@ -1,0 +1,76 @@
+{
+  "header": {
+    "brand": "Smoking",
+    "nav": { "home": "目次", "places": "場所", "saved": "保存済み", "forum": "フォーラム" },
+    "searchPlaceholder": "場所を検索…",
+    "nearMe": "近くを探す",
+    "addPlace": "場所を追加",
+    "themeToggle": "テーマ切替",
+    "signIn": "サインイン",
+    "signOut": "サインアウト"
+  },
+  "auth": {
+    "welcomeBack": "おかえりなさい",
+    "createAccount": "アカウント作成",
+    "signUpTitle": "Smoking に登録。",
+    "signInTitle": "Smoking にサインイン。",
+    "lede": "場所を保存、フォーラムに投稿、リスティングを請求。プロフィールは作成するまで非公開です。",
+    "usernameLabelSignup": "ユーザー名 (3文字以上, a-z 0-9 _.-)",
+    "usernameLabelSignin": "ユーザー名またはメール",
+    "emailLabel": "メールアドレス",
+    "passwordLabel": "パスワード",
+    "passwordLabelSignup": "パスワード (8文字以上)",
+    "switchToSignin": "アカウントをお持ちですか？ サインイン",
+    "switchToSignup": "初めての方は？ 登録する",
+    "submitSignup": "アカウント作成",
+    "submitSignin": "サインイン"
+  },
+  "addPlace": {
+    "title": "場所を追加。",
+    "lede": "知る価値のある場所を投稿してください。モデレーターがスパムでないことを確認した後、他の読者に表示されます。",
+    "name": "名前",
+    "type": "種類",
+    "location": "位置",
+    "useMyLocation": "現在地を使用",
+    "latitude": "緯度",
+    "longitude": "経度",
+    "country": "国",
+    "city": "都市",
+    "neighborhood": "地区",
+    "description": "説明 (任意)",
+    "cancel": "キャンセル",
+    "submit": "送信",
+    "errLatLng": "緯度と経度が必要です (「現在地を使用」ボタンを使ってください)。"
+  },
+  "forum": {
+    "eyebrow": "読者の手紙",
+    "title": "手紙。",
+    "lede": "質問、発見、苦情、おすすめ。読者から読者へ。",
+    "writeBtn": "手紙を書く",
+    "composeTitlePlaceholder": "タイトル — 意図を明確に。",
+    "composeBodyPlaceholder": "質問、発見、苦情。",
+    "tagsPlaceholder": "#タグ、カンマ区切り",
+    "cancel": "キャンセル",
+    "post": "投稿",
+    "signInToPost": "投稿するにはサインインしてください。"
+  },
+  "saved": {
+    "eyebrow": "個人的なリスト",
+    "title": "保存した場所。",
+    "spot": "件",
+    "spots": "件",
+    "kept": "保存中",
+    "emptyTitle": "まだ何も保存されていません。",
+    "emptyLede": "地図を開いて、また訪れたい場所のハートをタップしてください。順番にここに集まります。",
+    "emptyCta": "地図を開く"
+  },
+  "common": {
+    "submitting": "送信中…",
+    "loading": "読み込み中…",
+    "close": "閉じる",
+    "tryAgain": "再試行",
+    "networkError": "ネットワークエラー。",
+    "unauthorized": "サインインが必要です。",
+    "tooManyRequests": "リクエストが多すぎます。少し待ってください。"
+  }
+}

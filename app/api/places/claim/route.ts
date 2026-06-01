@@ -1,61 +1,71 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireWriter } from '@/lib/auth/session';
+import { writeLimit } from '@/lib/rate-limit';
 
-interface ClaimRequest {
-  placeId: string
-  merchantName: string
-  merchantEmail: string
-  businessLicense?: string
-  proofOfOwnership?: string
-}
-
-// In a real app, this would be stored in a database
-const claimedPlaces: Record<string, any> = {}
+// Accept either a real DB place (UUID) OR a freeform reference to a place
+// that exists only in the design's editorial seed. Admin reconciles later.
+const Body = z
+  .object({
+    placeId: z.string().uuid().optional(),
+    placeRef: z
+      .object({
+        slug: z.string().max(120).optional(),
+        name: z.string().max(200),
+        city: z.string().max(120).optional(),
+        country: z.string().max(80).optional(),
+      })
+      .optional(),
+    businessName: z.string().trim().min(1).max(200),
+    contactEmail: z.string().email(),
+    contactPhone: z.string().max(40).optional(),
+    proofUrl: z.string().url().optional(),
+    evidence: z.string().max(4000).optional(),
+  })
+  .refine((b) => !!b.placeId || !!b.placeRef, {
+    message: 'Either placeId or placeRef is required',
+  });
 
 export async function POST(request: NextRequest) {
+  const blocked = writeLimit.check(request, 'claim');
+  if (blocked) return blocked;
+  const gate = await requireWriter();
+  if ('status' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status });
+  const user = gate;
+
+  let body;
   try {
-    const body: ClaimRequest = await request.json()
-
-    if (!body.placeId || !body.merchantName || !body.merchantEmail) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
-
-    // In a real app, you would:
-    // 1. Verify the merchant owns the place
-    // 2. Send verification email
-    // 3. Store claim in database
-    // 4. Set merchantClaimed flag
-
-    claimedPlaces[body.placeId] = {
-      placeId: body.placeId,
-      merchantName: body.merchantName,
-      merchantEmail: body.merchantEmail,
-      claimedAt: new Date().toISOString(),
-      status: 'pending', // pending, verified, rejected
-    }
-
-    return NextResponse.json({
-      message: 'Claim submitted successfully. You will receive a verification email.',
-      claim: claimedPlaces[body.placeId],
-    })
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: 'Failed to submit claim', details: error.message },
-      { status: 500 }
-    )
+    body = Body.parse(await request.json());
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
   }
+
+  const { data, error } = await supabaseAdmin()
+    .from('merchant_claims')
+    .insert({
+      place_id: body.placeId ?? null,
+      place_ref: body.placeRef ?? null,
+      user_id: user.id,
+      business_name: body.businessName,
+      contact_email: body.contactEmail,
+      proof_url: body.proofUrl ?? null,
+      // Stash phone + evidence inside the existing proof_url JSON-ish field
+      // would require a schema change; for now keep the simple columns and
+      // ignore extras. Re-evaluate when admin review UI ships.
+    })
+    .select('*')
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ claim: data });
 }
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const placeId = searchParams.get('placeId')
-
-  if (placeId && claimedPlaces[placeId]) {
-    return NextResponse.json({ claim: claimedPlaces[placeId] })
-  }
-
-  return NextResponse.json({ claims: Object.values(claimedPlaces) })
+  const placeId = request.nextUrl.searchParams.get('placeId');
+  let q = supabaseAdmin().from('merchant_claims').select('*');
+  if (placeId) q = q.eq('place_id', placeId);
+  const { data, error } = await q;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ claims: data ?? [] });
 }
-

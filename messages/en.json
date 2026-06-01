@@ -1,0 +1,81 @@
+{
+  "header": {
+    "brand": "Smoking",
+    "nav": {
+      "home": "Index",
+      "places": "Places",
+      "saved": "Saved",
+      "forum": "Forum"
+    },
+    "searchPlaceholder": "Search places…",
+    "nearMe": "Near me",
+    "addPlace": "Submit a spot",
+    "themeToggle": "Toggle theme",
+    "signIn": "Sign in",
+    "signOut": "Sign out"
+  },
+  "auth": {
+    "welcomeBack": "Welcome back",
+    "createAccount": "Create account",
+    "signUpTitle": "Sign up to Smoking.",
+    "signInTitle": "Sign in to Smoking.",
+    "lede": "Save places, post in the forum, claim listings. No public profile until you fill one in.",
+    "usernameLabelSignup": "Username (3+ chars, a-z 0-9 _.-)",
+    "usernameLabelSignin": "Username or email",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "passwordLabelSignup": "Password (8+ chars)",
+    "switchToSignin": "Have an account? Sign in",
+    "switchToSignup": "New here? Sign up",
+    "submitSignup": "Create account",
+    "submitSignin": "Sign in"
+  },
+  "addPlace": {
+    "title": "Add a place.",
+    "lede": "Drop a place worth knowing about. Other readers will see it once a moderator confirms it isn't spam.",
+    "name": "Name",
+    "type": "Type",
+    "location": "Location",
+    "useMyLocation": "Use my location",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "country": "Country",
+    "city": "City",
+    "neighborhood": "Neighborhood",
+    "description": "Description (optional)",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "errLatLng": "Latitude + longitude required (use the 'Use my location' button)."
+  },
+  "forum": {
+    "eyebrow": "Reader correspondence",
+    "title": "Letters.",
+    "lede": "Questions, finds, complaints, recommendations. From readers, to readers.",
+    "writeBtn": "Write a letter",
+    "composeTitlePlaceholder": "A title — say what you mean.",
+    "composeBodyPlaceholder": "The question, the find, the complaint.",
+    "tagsPlaceholder": "#tags, separated by commas",
+    "cancel": "Cancel",
+    "post": "Post",
+    "signInToPost": "Sign in to post."
+  },
+  "saved": {
+    "eyebrow": "Personal index",
+    "title": "Your saved.",
+    "spot": "spot",
+    "spots": "spots",
+    "kept": "kept",
+    "emptyTitle": "Nothing kept yet.",
+    "emptyLede": "Open the map and tap the heart on the places worth coming back to. They'll collect here, in order.",
+    "emptyCta": "Open the map"
+  },
+  "common": {
+    "submitting": "Submitting…",
+    "loading": "Loading…",
+    "close": "Close",
+    "tryAgain": "Try again",
+    "networkError": "Network error.",
+    "unauthorized": "You must sign in.",
+    "tooManyRequests": "Too many requests. Slow down."
+  }
+}

@@ -1,135 +1,86 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireWriter } from '@/lib/auth/session';
+import { writeLimit } from '@/lib/rate-limit';
 
-interface Place {
-  id: string
-  name: string
-  lat: number
-  lng: number
-  description?: string
-  type: 'spot' | 'shop' | 'cafe' | 'dispensary' | 'kiosk' | 'convenience'
-  rating?: number
-  reviews?: number
-  contributedBy?: string
-  verified?: boolean
-  merchantClaimed?: boolean
-  accessible?: boolean
-  notes?: string
-}
-
-// In-memory storage (replace with database later)
-let places: Place[] = [
-  {
-    id: '1',
-    name: 'Kolonaki Square',
-    lat: 37.9838,
-    lng: 23.7275,
-    description: 'Popular outdoor spot in Athens',
-    type: 'spot',
-    rating: 4.5,
-    reviews: 12,
-    accessible: true,
-  },
-  {
-    id: '2',
-    name: 'Plaka District',
-    lat: 37.9715,
-    lng: 23.7268,
-    description: 'Historic area with great views',
-    type: 'spot',
-    rating: 4.2,
-    reviews: 8,
-    accessible: true,
-  },
-  {
-    id: '3',
-    name: 'Thessaloniki Waterfront',
-    lat: 40.6401,
-    lng: 22.9444,
-    description: 'Beautiful seaside location',
-    type: 'spot',
-    rating: 4.7,
-    reviews: 15,
-    accessible: true,
-  },
-]
+const PLACE_TYPES = [
+  'spot', 'shop', 'cafe', 'dispensary', 'kiosk', 'convenience', 'bench', 'smoking_area',
+] as const;
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const lat = searchParams.get('lat')
-  const lng = searchParams.get('lng')
-  const type = searchParams.get('type')
-  const radius = searchParams.get('radius') || '5000' // meters
+  const p = request.nextUrl.searchParams;
+  const type = p.get('type');
+  const country = p.get('country');
+  const city = p.get('city');
+  const q = p.get('q');
+  const externalId = p.get('external_id');
+  // Repeatable: ?external_id=seed:a&external_id=seed:b → IN-query.
+  const externalIds = p.getAll('external_id');
+  const limit = Math.min(parseInt(p.get('limit') ?? '500', 10) || 500, 2000);
 
-  let filteredPlaces = [...places]
+  // bbox: minLng,minLat,maxLng,maxLat
+  const bbox = p.get('bbox')?.split(',').map(Number);
 
-  // Filter by location if provided
-  if (lat && lng) {
-    const centerLat = parseFloat(lat)
-    const centerLng = parseFloat(lng)
-    const radiusMeters = parseFloat(radius)
-
-    filteredPlaces = filteredPlaces.filter(place => {
-      const distance = getDistanceFromLatLonInMeters(
-        centerLat,
-        centerLng,
-        place.lat,
-        place.lng
-      )
-      return distance <= radiusMeters
-    })
+  let query = supabaseAdmin().from('places').select('*').limit(limit);
+  if (type) query = query.eq('type', type);
+  if (country) query = query.eq('country', country);
+  if (city) query = query.eq('city', city);
+  if (q) query = query.ilike('name', `%${q}%`);
+  if (externalIds.length > 1) query = query.in('external_id', externalIds);
+  else if (externalId) query = query.eq('external_id', externalId);
+  if (bbox && bbox.length === 4 && bbox.every(Number.isFinite)) {
+    const [minLng, minLat, maxLng, maxLat] = bbox;
+    query = query
+      .gte('lng', minLng).lte('lng', maxLng)
+      .gte('lat', minLat).lte('lat', maxLat);
   }
 
-  // Filter by type
-  if (type) {
-    filteredPlaces = filteredPlaces.filter(place => place.type === type)
-  }
-
-  return NextResponse.json({ places: filteredPlaces })
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ places: data ?? [] });
 }
+
+const PostBody = z.object({
+  name: z.string().trim().min(1).max(200),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  type: z.enum(PLACE_TYPES),
+  description: z.string().max(2000).optional(),
+  country: z.string().max(80).optional(),
+  city: z.string().max(120).optional(),
+  neighborhood: z.string().max(120).optional(),
+  tags: z.array(z.string().max(40)).max(20).optional(),
+  accessible: z.boolean().optional(),
+  notes: z.string().max(2000).optional(),
+  photo_url: z.string().url().max(500).optional(),
+});
 
 export async function POST(request: NextRequest) {
+  const blocked = writeLimit.check(request, 'places');
+  if (blocked) return blocked;
+  const gate = await requireWriter();
+  if ('status' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status });
+  const user = gate;
+
+  let body;
   try {
-    const body = await request.json()
-    
-    const newPlace: Place = {
-      id: Date.now().toString(),
-      name: body.name,
-      lat: body.lat,
-      lng: body.lng,
-      description: body.description,
-      type: body.type || 'spot',
-      contributedBy: body.userId || 'anonymous',
-      verified: false,
-      accessible: body.accessible !== false,
-      notes: body.notes,
-    }
-
-    places.push(newPlace)
-
-    return NextResponse.json({ place: newPlace, message: 'Place added successfully' })
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: 'Failed to add place', details: error.message },
-      { status: 500 }
-    )
+    body = PostBody.parse(await request.json());
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
   }
-}
 
-// Helper function to calculate distance
-function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000 // Radius of the earth in meters
-  const dLat = deg2rad(lat2 - lat1)
-  const dLon = deg2rad(lon2 - lon1)
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2)
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  const d = R * c // Distance in meters
-  return d
-}
+  const { data, error } = await supabaseAdmin()
+    .from('places')
+    .insert({
+      ...body,
+      source: 'user',
+      tags: body.tags ?? [],
+      contributed_by: user.id,
+    })
+    .select('*')
+    .single();
 
-function deg2rad(deg: number): number {
-  return deg * (Math.PI / 180)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ place: data });
 }
-
