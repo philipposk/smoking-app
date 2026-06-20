@@ -1,0 +1,15 @@
+{
+  "//": "Typechecks scripts/ separately from the Next build. The base tsconfig",
+  "//2": "excludes scripts/ (they use node/tsx APIs the app build shouldn't see),",
+  "//3": "which previously masked bugs like the FSQ source-constraint mismatch.",
+  "//4": "Run with: npm run typecheck:scripts",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["scripts/**/*.ts"],
+  "exclude": ["node_modules"]
+}

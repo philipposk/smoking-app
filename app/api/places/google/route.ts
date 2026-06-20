@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { currentUser } from '@/lib/auth/session'
+import { writeLimit } from '@/lib/rate-limit'
 
-// This endpoint would integrate with Google Places API to scrape data
+// This endpoint integrates with the Google Places API (a paid/quota'd API).
+// Gate it: signed-in users only + per-IP rate limit so it can't be looped to
+// burn quota. NOTE: it currently reads NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, which
+// is also shipped to the browser — swap to a non-public server key if kept.
 export async function POST(request: NextRequest) {
+  const blocked = writeLimit.check(request, 'places-google')
+  if (blocked) return blocked
+  const user = await currentUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await request.json()
     const { query, location, type } = body

@@ -117,3 +117,17 @@ export async function requireWriter(): Promise<User | VerifyGateFail> {
   }
   return u;
 }
+
+/**
+ * Shared admin gate. Returns the user plus a `deny` NextResponse that callers
+ * return early when set. Mirrors the local helper in app/api/admin/flags so
+ * other admin-only handlers (e.g. the merchant-claims list) reuse one source.
+ */
+export async function requireAdmin(): Promise<
+  { user: User; deny: null } | { user: User | null; deny: { status: 401 | 403; error: string } }
+> {
+  const user = await currentUser();
+  if (!user) return { user: null, deny: { status: 401, error: 'Unauthorized' } };
+  if ((user as any).role !== 'admin') return { user, deny: { status: 403, error: 'Forbidden' } };
+  return { user, deny: null };
+}

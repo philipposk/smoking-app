@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireWriter } from '@/lib/auth/session';
+import { requireWriter, currentUser } from '@/lib/auth/session';
 import { writeLimit } from '@/lib/rate-limit';
 
 // Accept either a real DB place (UUID) OR a freeform reference to a place
@@ -61,10 +61,18 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ claim: data });
 }
 
+// Merchant claims hold private PII (contact email, ownership proof URLs).
+// Never expose them to anonymous callers. Admins see all claims; a signed-in
+// user sees only their own. Everyone else is rejected.
 export async function GET(request: NextRequest) {
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const placeId = request.nextUrl.searchParams.get('placeId');
   let q = supabaseAdmin().from('merchant_claims').select('*');
+  if ((user as any).role !== 'admin') q = q.eq('user_id', user.id);
   if (placeId) q = q.eq('place_id', placeId);
+
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ claims: data ?? [] });

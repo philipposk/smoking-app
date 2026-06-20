@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
 
   let q = supabaseAdmin()
     .from('places')
-    .select('*')
+    .select('id,external_id,name,type,lat,lng,country,city,neighborhood,description,photo_url,source,verified')
+    .eq('verified', true)
     .gte('lat', lat - dLat).lte('lat', lat + dLat)
     .gte('lng', lng - dLng).lte('lng', lng + dLng)
     .limit(Math.min(limit * 4, 1000));

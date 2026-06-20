@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { currentUser } from '@/lib/auth/session'
+import { writeLimit } from '@/lib/rate-limit'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazily construct the OpenAI client so an anonymous/abusive request can't even
+// reach a configured client, and so the module doesn't init the SDK at import.
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  return _openai
+}
+const openai = { get chat() { return getOpenAI().chat } }
 
 // Lazy load Groq to avoid build issues - use dynamic import
 async function getGroqClient() {
@@ -29,6 +36,14 @@ interface RecommendationRequest {
 }
 
 export async function POST(request: NextRequest) {
+  // Gate: this route calls paid OpenAI/Groq APIs. Require a signed-in user and
+  // rate-limit per IP so it can't be looped into an unbounded bill or used as a
+  // free LLM proxy.
+  const blocked = writeLimit.check(request, 'recommendations')
+  if (blocked) return blocked
+  const user = await currentUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body: RecommendationRequest = await request.json()
     const useGroq = body.useGroq === true && process.env.GROQ_API_KEY

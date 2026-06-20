@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireWriter } from '@/lib/auth/session';
+import { requireWriter, currentUser } from '@/lib/auth/session';
 import { writeLimit } from '@/lib/rate-limit';
+
+// Only the columns the list/map/favorites UI actually reads. Excludes heavy
+// or private fields (notes, contributed_by, merchant_user_id, timestamps) so
+// the map payload stays small once the table grows to tens of thousands of rows.
+const LIST_COLUMNS =
+  'id,external_id,name,type,lat,lng,country,city,neighborhood,region,description,tags,photo_url,source,verified,merchant_claimed';
 
 const PLACE_TYPES = [
   'spot', 'shop', 'cafe', 'dispensary', 'kiosk', 'convenience', 'bench', 'smoking_area',
@@ -22,7 +28,23 @@ export async function GET(request: NextRequest) {
   // bbox: minLng,minLat,maxLng,maxLat
   const bbox = p.get('bbox')?.split(',').map(Number);
 
-  let query = supabaseAdmin().from('places').select('*').limit(limit);
+  // Moderation gate: the public list only shows verified places. Unmoderated
+  // user submissions (verified=false) and admin-hidden places stay private.
+  // Admins may opt in to seeing everything via ?includeUnverified=1 (used by
+  // moderation tooling). Seed/OSM/FSQ rows are all inserted verified=true.
+  const wantsUnverified = p.get('includeUnverified') === '1';
+  let allowUnverified = false;
+  if (wantsUnverified) {
+    const u = await currentUser();
+    allowUnverified = (u as any)?.role === 'admin';
+  }
+
+  let query = supabaseAdmin()
+    .from('places')
+    .select(LIST_COLUMNS)
+    .order('id', { ascending: true })
+    .limit(limit);
+  if (!allowUnverified) query = query.eq('verified', true);
   if (type) query = query.eq('type', type);
   if (country) query = query.eq('country', country);
   if (city) query = query.eq('city', city);
