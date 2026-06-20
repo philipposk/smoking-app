@@ -31,9 +31,11 @@ test.describe('age gate', () => {
 });
 
 test.describe('home page (post age gate)', () => {
-  test.beforeEach(async ({ context }) => {
-    // BASE_URL is http://127.0.0.1:3939 — cookie domain must match exactly.
-    const domain = new URL(process.env.BASE_URL ?? 'http://127.0.0.1:3939').hostname;
+  test.beforeEach(async ({ context, baseURL }) => {
+    // Cookie domain must match the host the browser actually uses. Derive it
+    // from Playwright's resolved baseURL (localhost when it spins its own dev
+    // server, 127.0.0.1 when BASE_URL points there) so the cookie is sent.
+    const domain = new URL(baseURL ?? 'http://localhost:3939').hostname;
     await context.addCookies([{ name: 'age_ok', value: '1', domain, path: '/' }]);
   });
 
@@ -81,8 +83,8 @@ test.describe('home page (post age gate)', () => {
 });
 
 test.describe('static pages', () => {
-  test.beforeEach(async ({ context }) => {
-    const domain = new URL(process.env.BASE_URL ?? 'http://127.0.0.1:3939').hostname;
+  test.beforeEach(async ({ context, baseURL }) => {
+    const domain = new URL(baseURL ?? 'http://localhost:3939').hostname;
     await context.addCookies([{ name: 'age_ok', value: '1', domain, path: '/' }]);
   });
 
