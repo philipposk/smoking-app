@@ -274,16 +274,89 @@ const Photo = ({ n, children }) => (
    provider toggle (used in recs strip)
    ============================================================ */
 
-function ProviderToggle() {
-  const [provider, setProvider] = useState("openai");
+function ProviderToggle({ provider, onChange }) {
+  // Controlled when parent passes provider/onChange; self-managed otherwise.
+  const [local, setLocal] = useState("openai");
+  const value = provider ?? local;
+  const set = onChange ?? setLocal;
   return (
     <div className="provider-toggle">
       <span>Engine</span>
       <div className="provider-switch">
-        <button className={provider === "openai" ? "on" : ""} onClick={() => setProvider("openai")}>OpenAI</button>
-        <button className={provider === "groq" ? "on" : ""} onClick={() => setProvider("groq")}>Groq</button>
+        <button className={value === "openai" ? "on" : ""} onClick={() => set("openai")}>OpenAI</button>
+        <button className={value === "groq" ? "on" : ""} onClick={() => set("groq")}>Groq</button>
       </div>
     </div>
+  );
+}
+
+// Personalized picks. "Regenerate" calls the real /api/recommendations endpoint
+// (auth-gated). Falls back to the editorial RECS list when signed out or when
+// no AI provider is configured, with an honest inline note — no dead buttons.
+function EditorPicks({ favorites }) {
+  const [provider, setProvider] = useState("openai");
+  const [list, setList] = useState(RECS);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+
+  const regenerate = async () => {
+    setBusy(true);
+    setNote("");
+    try {
+      const res = await fetch("/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ favoritePlaces: favorites, useGroq: provider === "groq" }),
+      });
+      if (res.status === 401) { setNote("Sign in to generate personalized picks."); return; }
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { setNote(j.error || "Couldn't generate right now."); return; }
+      const recs = Array.isArray(j.recommendations) ? j.recommendations : [];
+      if (recs.length === 0) { setNote("No picks returned — showing editor's selection."); return; }
+      setList(recs.map((r) => ({
+        name: r.name || "Untitled",
+        neigh: r.neighborhood || r.location || "",
+        why: r.whyRecommended || r.description || "",
+      })));
+    } catch {
+      setNote("Network error — showing editor's selection.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="wrap">
+      <div className="recs">
+        <div className="recs-head">
+          <div className="ember-pulse">
+            <span className="dot" aria-hidden="true"></span>
+            <span>For you · drawn from {favorites.length || "your"} saved spots</span>
+          </div>
+          <h3>Notes from the editor.</h3>
+          <p>Recommendations based on the corners you keep coming back to. Re-roll any time.</p>
+          <div style={{display: "flex", gap: 8, alignItems: "center", marginTop: 8, flexWrap: "wrap"}}>
+            <button className="btn btn-ember" onClick={regenerate} disabled={busy}>
+              {busy ? "Generating…" : "Regenerate"}
+            </button>
+            <ProviderToggle provider={provider} onChange={setProvider} />
+          </div>
+          {note && <p style={{fontSize: 13, color: "var(--muted)", marginTop: 6}}>{note}</p>}
+        </div>
+        <div className="recs-list">
+          {list.map((r, i) => (
+            <div key={`${r.name}-${i}`} className="rec">
+              <span className="n">{String(i + 1).padStart(2, "0")}</span>
+              <div>
+                <div className="name">{r.name}</div>
+              </div>
+              <span className="neigh">{r.neigh}</span>
+              <p className="why">{r.why}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -656,7 +729,7 @@ function Assistant({ favorites, setRoute }) {
           ? <>You have <strong>{favorites.length} saved spots</strong>. They lean outdoor and European — try Café Toscano in Mexico City for the same vibe in a different time zone.</>
           : <>You haven't saved anything yet. Open the map and tap the heart on any spot — I can recommend off your saved list once it has a few entries.</>;
       } else {
-        body = (<>Good question. We have <strong>2,184 spots across 47 cities</strong>. Tell me which city you're in (or want to be in) and what you're after — view, quiet, rooftop, late-night — and I'll narrow it down.</>);
+        body = (<>Good question. Tell me which city you're in (or want to be in) and what you're after — view, quiet, rooftop, late-night — and I'll narrow it down from the map.</>);
       }
       setMessages(m => [...m, { from: "bot", body }]);
       setTyping(false);
@@ -730,12 +803,34 @@ function Assistant({ favorites, setRoute }) {
    ============================================================ */
 
 function HomeView({ setRoute, favorites, toggleFav }) {
+  // Real catalog counts — never advertise numbers the DB can't back up.
+  // Falls back to the editorial seed count until live data lands.
+  const [stats, setStats] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/stats")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (alive && j) setStats(j); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const nf = (n) => (typeof n === "number" ? n.toLocaleString() : "—");
+  // Fall back to the editorial count (9 real curated places shown below) until
+  // the DB is seeded — never invent numbers.
+  const placeCount = stats ? (stats.places || PLACES.length) : null;
+  const cityCount = stats ? (stats.cities || null) : null;
+  const countryCount = stats ? (stats.countries || null) : null;
+  const noteCount = stats ? stats.notes : null;
+  const placesLabel = placeCount != null ? nf(placeCount) : `${PLACES.length}+`;
+
   return (
     <>
       <section className="wrap hero">
         <div className="hero-eyebrow">
           <span className="dot" aria-hidden="true"></span>
-          <span className="eyebrow">Vol. 01 · Issue 14 · An atlas of 47 cities</span>
+          <span className="eyebrow">
+            {cityCount ? `A reader-kept atlas of ${nf(cityCount)} cities` : "A reader-kept atlas"}
+          </span>
         </div>
         <h1 className="hero-h1">
           A quiet atlas of places<br />
@@ -755,17 +850,17 @@ function HomeView({ setRoute, favorites, toggleFav }) {
 
         <div className="hero-bottom">
           <div className="stat">
-            <div className="n">2,184</div>
+            <div className="n">{placeCount != null ? nf(placeCount) : "—"}</div>
             <div className="l">Logged spots</div>
           </div>
           <div className="sep" aria-hidden="true"></div>
           <div className="stat">
-            <div className="n">47</div>
-            <div className="l">Cities, 23 countries</div>
+            <div className="n">{cityCount != null ? nf(cityCount) : "—"}</div>
+            <div className="l">{countryCount ? `Cities, ${nf(countryCount)} countries` : "Cities"}</div>
           </div>
           <div className="sep" aria-hidden="true"></div>
           <div className="stat">
-            <div className="n">38,902</div>
+            <div className="n">{noteCount != null ? nf(noteCount) : "—"}</div>
             <div className="l">Reader notes</div>
           </div>
         </div>
@@ -779,7 +874,7 @@ function HomeView({ setRoute, favorites, toggleFav }) {
           </div>
           <div className="right">
             <a href="#" className="btn btn-ghost" onClick={(e)=>{e.preventDefault(); setRoute("places");}}>
-              All 2,184 spots <Icons.ArrowUpRight size={14}/>
+              Browse all {placesLabel} spots <Icons.ArrowUpRight size={14}/>
             </a>
           </div>
         </div>
@@ -809,41 +904,14 @@ function HomeView({ setRoute, favorites, toggleFav }) {
         </div>
       </section>
 
-      <section className="wrap">
-        <div className="recs">
-          <div className="recs-head">
-            <div className="ember-pulse">
-              <span className="dot" aria-hidden="true"></span>
-              <span>For you · drawn from {favorites.length || "your"} saved spots</span>
-            </div>
-            <h3>Notes from the editor.</h3>
-            <p>Recommendations based on the corners you keep coming back to. Re-roll any time.</p>
-            <div style={{display: "flex", gap: 8, alignItems: "center", marginTop: 8, flexWrap: "wrap"}}>
-              <button className="btn btn-ember">Regenerate</button>
-              <ProviderToggle />
-            </div>
-          </div>
-          <div className="recs-list">
-            {RECS.map((r, i) => (
-              <div key={r.name} className="rec">
-                <span className="n">{String(i + 1).padStart(2, "0")}</span>
-                <div>
-                  <div className="name">{r.name}</div>
-                </div>
-                <span className="neigh">{r.neigh}</span>
-                <p className="why">{r.why}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <EditorPicks favorites={favorites} />
 
       <section className="wrap">
         <div className="note">
           <h3>What this is, and isn't.</h3>
           <div className="note-body">
             <p>
-              Smoking is not an advocacy piece. It is a field guide, written by people who already smoke, for the dwindling number of places — in 47 cities and counting — where doing so is welcomed, or at least not glared at.
+              Smoking is not an advocacy piece. It is a field guide, written by people who already smoke, for the dwindling number of places — in cities around the world — where doing so is welcomed, or at least not glared at.
             </p>
             <p>
               Most spots collected here are open-air: terraces, courtyards, public squares, the wide stone walls along the gulf. A handful of indoor venues are listed where the city still legally permits it. Health warnings are on the pack; we trust you've read them.
@@ -1121,7 +1189,7 @@ function PlacesView({ favorites, toggleFav, openClaim }) {
             <div>
               <div className="eyebrow">The atlas · globe view</div>
               <h1 style={{fontFamily: "var(--serif)", fontSize: 32, letterSpacing: "-0.01em", lineHeight: 1, marginTop: 4}}>
-                {PLACES.length} spots, 23 countries.
+                {PLACES.length} featured spots.
               </h1>
             </div>
             <ViewSwitch mode={mode} setMode={setMode} />
@@ -1829,7 +1897,7 @@ function Footer({ setRoute }) {
       <div className="wrap inner">
         <div>
           <p className="colophon">
-            Smoking is an independent reader-kept field guide to Athens & Thessaloniki. Set in Instrument Serif and Space Grotesk.
+            Smoking is an independent, reader-kept field guide to places worldwide where you can still light up. Set in Instrument Serif and Space Grotesk.
           </p>
         </div>
         <div>
@@ -1841,11 +1909,11 @@ function Footer({ setRoute }) {
           </ul>
         </div>
         <div>
-          <h4>Cities</h4>
+          <h4>Explore</h4>
           <ul>
-            <li><a href="#">Athens</a></li>
-            <li><a href="#">Thessaloniki</a></li>
-            <li><a href="#">Submit a city</a></li>
+            <li><a href="/map">Full-screen map</a></li>
+            <li><a href="#" onClick={(e)=>{e.preventDefault(); setRoute("places");}}>Browse spots</a></li>
+            <li><a href="#" onClick={(e)=>{e.preventDefault(); setRoute("places");}}>Submit a spot</a></li>
           </ul>
         </div>
         <div>
@@ -1853,12 +1921,12 @@ function Footer({ setRoute }) {
           <ul>
             <li><a href="/privacy">Privacy</a></li>
             <li><a href="/terms">Terms</a></li>
-            <li><a href="#">Contact</a></li>
+            <li><a href="mailto:hello@6x7.gr">Contact</a></li>
           </ul>
         </div>
       </div>
       <div className="wrap bottom">
-        <span>© 2026 Smoking · Athens</span>
+        <span>© 2026 Smoking</span>
         <span>Vol. 01 · Issue 14</span>
       </div>
     </footer>
