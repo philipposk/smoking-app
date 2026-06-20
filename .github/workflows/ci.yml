@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'audit/**']
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Lint · Typecheck · Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      # duckdb is an optional native dep; don't fail install if it can't build.
+      - run: npm ci --no-optional
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run typecheck:scripts
+      - name: Build
+        run: npm run build
+        env:
+          # Build must succeed without secrets. Routes that need Supabase are
+          # dynamic and only touch it at request time.
+          NEXT_TELEMETRY_DISABLED: '1'
+
+  e2e:
+    name: Playwright e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --no-optional
+      - name: Install Playwright (chromium)
+        run: npx playwright install --with-deps chromium
+      - name: Run e2e
+        run: npm run test:e2e
+        env:
+          # The suite spins up its own dev server. Tests that need Supabase
+          # auto-skip when these are absent.
+          NEXT_TELEMETRY_DISABLED: '1'
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

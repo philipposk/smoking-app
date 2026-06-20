@@ -45,6 +45,9 @@ export default function LiveMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Bumping this re-runs the init effect — that's what makes "Retry" actually
+  // rebuild the map instead of leaving the container permanently blank.
+  const [retryKey, setRetryKey] = useState(0);
 
   // Stable geojson reference — prevents redundant data-push effects.
   const geojson = useMemo(
@@ -190,7 +193,7 @@ export default function LiveMap({
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [retryKey]);
 
   // Push updated places data without rebuilding the map instance.
   useEffect(() => {
@@ -233,7 +236,12 @@ export default function LiveMap({
           <button
             className="btn btn-ghost"
             style={{ fontSize: 13, marginTop: 8 }}
-            onClick={() => { setLoadError(null); mapRef.current?.remove(); mapRef.current = null; }}
+            onClick={() => {
+              setLoadError(null);
+              mapRef.current?.remove();
+              mapRef.current = null;
+              setRetryKey((k) => k + 1); // re-trigger the init effect
+            }}
           >
             Retry
           </button>

@@ -13,6 +13,45 @@ import dynamic from 'next/dynamic';
 const LiveMap = dynamic(() => import('./LiveMap'), { ssr: false });
 
 /* ============================================================
+   modal accessibility
+   ============================================================ */
+// Escape-to-close, focus trap, and focus restoration for dialogs. Returns a
+// ref to attach to the modal panel (which should also carry role="dialog"
+// aria-modal="true" tabIndex={-1}).
+function useModalA11y(onClose) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const panel = ref.current;
+    const prevFocus = typeof document !== "undefined" ? document.activeElement : null;
+    const SEL =
+      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    const focusables = () => (panel ? Array.from(panel.querySelectorAll(SEL)) : []);
+
+    const items0 = focusables();
+    (items0[0] || panel)?.focus?.();
+
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); onClose?.(); return; }
+      if (e.key === "Tab") {
+        const items = focusables();
+        if (items.length === 0) { e.preventDefault(); panel?.focus?.(); return; }
+        const first = items[0];
+        const last = items[items.length - 1];
+        const active = document.activeElement;
+        if (e.shiftKey && (active === first || active === panel)) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      prevFocus?.focus?.();
+    };
+  }, [onClose]);
+  return ref;
+}
+
+/* ============================================================
    data
    ============================================================ */
 
@@ -529,6 +568,7 @@ function Header({ route, setRoute, theme, setTheme, favCount, user, onSignIn, on
    ============================================================ */
 
 function MerchantClaimModal({ place, onClose }) {
+  const panelRef = useModalA11y(onClose);
   const [step, setStep] = useState("form"); // form | sent | error
   const [errMsg, setErrMsg] = useState("");
   const [needsVerify, setNeedsVerify] = useState(false);
@@ -583,7 +623,7 @@ function MerchantClaimModal({ place, onClose }) {
 
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div className="modal" ref={panelRef} role="dialog" aria-modal="true" aria-label="Merchant claim" tabIndex={-1} onClick={e => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">
           <Icons.X size={18}/>
         </button>
@@ -1938,6 +1978,7 @@ function Footer({ setRoute }) {
    ============================================================ */
 
 function AddPlaceModal({ onClose, onAdded, user, onSignIn }) {
+  const panelRef = useModalA11y(onClose);
   const [form, setForm] = useState({
     name: "", type: "spot", lat: "", lng: "",
     country: "", city: "", neighborhood: "", description: "",
@@ -2042,7 +2083,7 @@ function AddPlaceModal({ onClose, onAdded, user, onSignIn }) {
 
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" ref={panelRef} role="dialog" aria-modal="true" aria-label="Submit a spot" tabIndex={-1} onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">
           <Icons.X size={18}/>
         </button>
@@ -2137,6 +2178,7 @@ function AddPlaceModal({ onClose, onAdded, user, onSignIn }) {
 }
 
 function AuthModal({ onClose, onAuthed }) {
+  const panelRef = useModalA11y(onClose);
   const [mode, setMode] = useState("signin"); // signin | signup
   const [form, setForm] = useState({ username: "", email: "", password: "" });
   const [err, setErr] = useState("");
@@ -2172,7 +2214,7 @@ function AuthModal({ onClose, onAuthed }) {
 
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" ref={panelRef} role="dialog" aria-modal="true" aria-label={mode === "signup" ? "Create account" : "Sign in"} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">
           <Icons.X size={18} />
         </button>
