@@ -11,7 +11,7 @@ const Body = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const blocked = authLimit.check(request, 'login');
+  const blocked = await authLimit.check(request, 'login');
   if (blocked) return blocked;
 
   let parsed;

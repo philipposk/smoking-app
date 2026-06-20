@@ -28,7 +28,7 @@ const Body = z
   });
 
 export async function POST(request: NextRequest) {
-  const blocked = writeLimit.check(request, 'claim');
+  const blocked = await writeLimit.check(request, 'claim');
   if (blocked) return blocked;
   const gate = await requireWriter();
   if ('status' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status });

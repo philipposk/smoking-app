@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   // Gate: this route calls paid OpenAI/Groq APIs. Require a signed-in user and
   // rate-limit per IP so it can't be looped into an unbounded bill or used as a
   // free LLM proxy.
-  const blocked = writeLimit.check(request, 'recommendations')
+  const blocked = await writeLimit.check(request, 'recommendations')
   if (blocked) return blocked
   const user = await currentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

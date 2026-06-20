@@ -19,7 +19,7 @@ const Body = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const blocked = writeLimit.check(request, 'upload');
+  const blocked = await writeLimit.check(request, 'upload');
   if (blocked) return blocked;
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

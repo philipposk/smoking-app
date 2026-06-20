@@ -23,7 +23,7 @@ const Body = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const blocked = writeLimit.check(request, 'review');
+  const blocked = await writeLimit.check(request, 'review');
   if (blocked) return blocked;
   const gate = await requireWriter();
   if ('status' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status });

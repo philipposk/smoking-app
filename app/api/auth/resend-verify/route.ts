@@ -8,7 +8,7 @@ import { sendEmail } from '@/lib/email';
 // Resend the email-verification link for the signed-in user.
 // Rate-limited via authLimit (10/min/IP). No-op if already verified.
 export async function POST(request: NextRequest) {
-  const blocked = authLimit.check(request, 'resend-verify');
+  const blocked = await authLimit.check(request, 'resend-verify');
   if (blocked) return blocked;
 
   const user = await currentUser();

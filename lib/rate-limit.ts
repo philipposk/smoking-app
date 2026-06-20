@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// In-memory sliding-window rate limiter. Per-process: fine for a single
-// Vercel function instance / single Node server. If you scale horizontally,
-// swap the Map for Upstash Redis (drop-in: same `check` signature).
+// Rate limiter with two backends, chosen at runtime:
 //
-//   const limit = makeLimit({ windowMs: 60_000, max: 10 });
-//   const blocked = limit.check(req, 'signup');
-//   if (blocked) return blocked;
-
-type Bucket = { count: number; resetAt: number };
+//   1. Upstash Redis (shared, correct across serverless instances) when
+//      UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set. Uses the REST
+//      API directly (no SDK dependency): INCR + EXPIRE NX = fixed-window count.
+//   2. In-memory Map fallback otherwise (fine for a single Node server / local
+//      dev; NOT correct across multiple Vercel lambdas — set Upstash in prod).
+//
+// `check` is async. Callers: `const blocked = await limit.check(req, 'key');`
 
 interface Opts {
   windowMs: number; // size of the window
@@ -32,11 +32,48 @@ export function clientIp(req: NextRequest): string {
   return 'unknown';
 }
 
+function upstashConfigured(): boolean {
+  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+}
+
+// Returns { count, ttlMs } for the current window, or null if Redis is
+// unavailable / errored (caller then falls back to in-memory).
+async function upstashHit(id: string, windowMs: number): Promise<{ count: number; ttlMs: number } | null> {
+  const url = process.env.UPSTASH_REDIS_REST_URL!;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN!;
+  const ttlSec = Math.ceil(windowMs / 1000);
+  const key = `rl:${id}`;
+  try {
+    // Pipeline: INCR then set expiry only if not already set (NX) so the window
+    // is fixed from the first hit.
+    const res = await fetch(`${url}/pipeline`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify([
+        ['INCR', key],
+        ['EXPIRE', key, String(ttlSec), 'NX'],
+        ['PTTL', key],
+      ]),
+      // Don't let a slow Redis hang the request path.
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!res.ok) return null;
+    const out = await res.json();
+    // out is [{result: count}, {result: 0|1}, {result: pttlMs}]
+    const count = Number(out?.[0]?.result);
+    const pttl = Number(out?.[2]?.result);
+    if (!Number.isFinite(count)) return null;
+    return { count, ttlMs: Number.isFinite(pttl) && pttl > 0 ? pttl : windowMs };
+  } catch {
+    return null;
+  }
+}
+
 export function makeLimit({ windowMs, max }: Opts) {
+  type Bucket = { count: number; resetAt: number };
   const buckets = new Map<string, Bucket>();
 
-  // Periodic cleanup so the Map doesn't grow forever in long-lived processes.
-  // setInterval is unref'd so it doesn't keep the event loop alive.
+  // Periodic cleanup so the in-memory Map doesn't grow forever.
   if (typeof setInterval !== 'undefined') {
     const iv = setInterval(() => {
       const now = Date.now();
@@ -45,25 +82,39 @@ export function makeLimit({ windowMs, max }: Opts) {
     if (typeof iv === 'object' && iv && 'unref' in iv) (iv as any).unref();
   }
 
+  function tooMany(retryAfterMs: number): NextResponse {
+    const retryAfter = Math.max(1, Math.ceil(retryAfterMs / 1000));
+    return NextResponse.json(
+      { error: 'Too many requests. Slow down.' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    );
+  }
+
+  function memCheck(id: string): NextResponse | null {
+    const now = Date.now();
+    let b = buckets.get(id);
+    if (!b || b.resetAt < now) {
+      b = { count: 0, resetAt: now + windowMs };
+      buckets.set(id, b);
+    }
+    b.count++;
+    if (b.count > max) return tooMany(b.resetAt - now);
+    return null;
+  }
+
   return {
     /** Returns a NextResponse if the request should be blocked, else null. */
-    check(req: NextRequest, key: string): NextResponse | null {
+    async check(req: NextRequest, key: string): Promise<NextResponse | null> {
       const id = `${clientIp(req)}:${key}`;
-      const now = Date.now();
-      let b = buckets.get(id);
-      if (!b || b.resetAt < now) {
-        b = { count: 0, resetAt: now + windowMs };
-        buckets.set(id, b);
+      if (upstashConfigured()) {
+        const hit = await upstashHit(id, windowMs);
+        if (hit) {
+          if (hit.count > max) return tooMany(hit.ttlMs);
+          return null;
+        }
+        // Redis errored — fall through to in-memory so we still throttle.
       }
-      b.count++;
-      if (b.count > max) {
-        const retryAfter = Math.max(1, Math.ceil((b.resetAt - now) / 1000));
-        return NextResponse.json(
-          { error: 'Too many requests. Slow down.' },
-          { status: 429, headers: { 'Retry-After': String(retryAfter) } },
-        );
-      }
-      return null;
+      return memCheck(id);
     },
   };
 }

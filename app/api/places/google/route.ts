@@ -7,7 +7,7 @@ import { writeLimit } from '@/lib/rate-limit'
 // burn quota. NOTE: it currently reads NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, which
 // is also shipped to the browser — swap to a non-public server key if kept.
 export async function POST(request: NextRequest) {
-  const blocked = writeLimit.check(request, 'places-google')
+  const blocked = await writeLimit.check(request, 'places-google')
   if (blocked) return blocked
   const user = await currentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
