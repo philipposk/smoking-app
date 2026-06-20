@@ -17,7 +17,13 @@ export async function GET(request: NextRequest) {
     .limit(limit);
 
   if (category) q = q.eq('category', category);
-  if (search) q = q.or(`title.ilike.%${search}%,body.ilike.%${search}%`);
+  if (search) {
+    // PostgREST .or() takes a raw filter string, so unsanitized input could
+    // inject extra filters or break parsing via commas/parens/operators. Strip
+    // characters with meaning in or-filter syntax and SQL LIKE wildcards.
+    const safe = search.replace(/[,()*:%_\\]/g, ' ').trim().slice(0, 100);
+    if (safe) q = q.or(`title.ilike.%${safe}%,body.ilike.%${safe}%`);
+  }
 
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

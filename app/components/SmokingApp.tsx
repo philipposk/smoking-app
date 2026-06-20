@@ -410,19 +410,22 @@ function SearchBox() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // Debounced search
+  // Debounced search. Abort + stale-guard so a slow earlier request can't
+  // overwrite the results of a newer keystroke (race condition).
   useEffect(() => {
     if (!q.trim()) { setResults([]); return; }
+    let stale = false;
+    const ctrl = new AbortController();
     const id = setTimeout(async () => {
       setBusy(true);
       try {
-        const r = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=10`);
+        const r = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=10`, { signal: ctrl.signal });
         const j = await r.json().catch(() => ({}));
-        setResults(Array.isArray(j.places) ? j.places : []);
-      } catch { setResults([]); }
-      finally { setBusy(false); }
+        if (!stale) setResults(Array.isArray(j.places) ? j.places : []);
+      } catch { if (!stale) setResults([]); }
+      finally { if (!stale) setBusy(false); }
     }, 250);
-    return () => clearTimeout(id);
+    return () => { stale = true; ctrl.abort(); clearTimeout(id); };
   }, [q]);
 
   const nearMe = () => {
@@ -2298,7 +2301,11 @@ const FAV_KEY = "smoking_favs_v1";
 // Resolve a design slug to a Supabase UUID via external_id='seed:<slug>'.
 // Returns null if the seed-loader hasn't been run yet or the place isn't in DB.
 // Cached in a Map for the session so we don't re-fetch the same lookup.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function resolveSlugToUuid(slug, cache) {
+  // Live places are already stored by their real UUID id — no seed lookup needed.
+  if (UUID_RE.test(slug)) return slug;
   if (cache.has(slug)) return cache.get(slug);
   try {
     const r = await fetch(`/api/places?external_id=${encodeURIComponent(`seed:${slug}`)}&limit=1`);
@@ -2327,8 +2334,18 @@ function App() {
   const slugCache = useRef(new Map());
   const syncedFromDb = useRef(false);
 
+  // Restore the saved theme once on mount (before paint via the inline script
+  // in layout, this just syncs React state to what's already applied).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("theme");
+      if (saved === "dark" || saved === "light") setTheme(saved);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem("theme", theme); } catch {}
   }, [theme]);
 
   // Bootstrap session on mount
@@ -2378,7 +2395,11 @@ function App() {
         for (const row of j.favorites ?? []) {
           const ext = row.places?.external_id;
           if (typeof ext === "string" && ext.startsWith("seed:")) {
+            // Editorial seed place → key by slug (matches local favorites).
             serverSlugs.push(ext.slice(5));
+          } else if (row.places?.id || row.place_id) {
+            // Real (live) place → key by its UUID so it round-trips across devices.
+            serverSlugs.push(row.places?.id ?? row.place_id);
           }
         }
         if (serverSlugs.length === 0) {
