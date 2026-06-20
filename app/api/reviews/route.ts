@@ -5,11 +5,15 @@ import { currentUser, requireWriter } from '@/lib/auth/session';
 import { writeLimit } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
-  const placeId = request.nextUrl.searchParams.get('placeId');
+  const p = request.nextUrl.searchParams;
+  const placeId = p.get('placeId');
+  const limit = Math.min(parseInt(p.get('limit') ?? '100', 10) || 100, 200);
+  const offset = Math.max(parseInt(p.get('offset') ?? '0', 10) || 0, 0);
   let q = supabaseAdmin()
     .from('reviews')
     .select('id, place_id, user_id, rating, body, created_at, users:users(username, avatar_url)')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
   if (placeId) q = q.eq('place_id', placeId);
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

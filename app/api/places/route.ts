@@ -60,7 +60,14 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ places: data ?? [] });
+
+  // Public verified listings are safe to cache at the CDN edge — this is the
+  // hot path (map + list) and is identical for all anonymous callers. The
+  // admin "include unverified" view is per-user, so never cache it.
+  const headers: Record<string, string> = allowUnverified
+    ? { 'Cache-Control': 'private, no-store' }
+    : { 'Cache-Control': 's-maxage=60, stale-while-revalidate=300' };
+  return NextResponse.json({ places: data ?? [] }, { headers });
 }
 
 const PostBody = z.object({

@@ -5,11 +5,15 @@ import { requireWriter } from '@/lib/auth/session';
 import { writeLimit } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
-  const postId = request.nextUrl.searchParams.get('postId');
+  const p = request.nextUrl.searchParams;
+  const postId = p.get('postId');
+  const limit = Math.min(parseInt(p.get('limit') ?? '100', 10) || 100, 200);
+  const offset = Math.max(parseInt(p.get('offset') ?? '0', 10) || 0, 0);
   let q = supabaseAdmin()
     .from('forum_replies')
     .select('id, post_id, user_id, body, created_at, users:users(username, avatar_url)')
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: true })
+    .range(offset, offset + limit - 1);
   if (postId) q = q.eq('post_id', postId);
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
