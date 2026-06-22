@@ -8,7 +8,7 @@ import { writeLimit } from '@/lib/rate-limit';
 // or private fields (notes, contributed_by, merchant_user_id, timestamps) so
 // the map payload stays small once the table grows to tens of thousands of rows.
 const LIST_COLUMNS =
-  'id,external_id,name,type,lat,lng,country,city,neighborhood,region,description,tags,photo_url,source,verified,merchant_claimed';
+  'id,external_id,name,type,lat,lng,country,city,neighborhood,region,description,tags,photo_url,source,verified,merchant_claimed,smoking_status';
 
 const PLACE_TYPES = [
   'spot', 'shop', 'cafe', 'dispensary', 'kiosk', 'convenience', 'bench', 'smoking_area',

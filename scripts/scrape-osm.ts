@@ -44,48 +44,74 @@ type OsmEl = {
   tags?: Record<string, string>;
 };
 
-type Classification = { type: string; reason: string };
+// smoking_status: structured "can I smoke here?" verdict.
+// source: where the verdict came from (osm = an explicit OSM smoking=* tag;
+// unknown = inferred from the place being outdoors, not an explicit statement).
+type SmokingStatus = 'allowed' | 'outside_only' | 'designated' | 'banned' | 'unknown';
+type Classification = {
+  type: string;
+  reason: string;
+  smokingStatus: SmokingStatus;
+  smokingSource: 'osm' | 'unknown';
+};
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-// Map a tag set onto the app's place type, plus a short human reason for the
-// description. Order matters — most specific / most useful signal first.
+// Map the OSM smoking=* tag onto our structured verdict.
+function statusFromSmokingTag(v: string): SmokingStatus {
+  if (v === 'yes' || v === 'dedicated') return 'allowed';
+  if (v === 'outside' || v === 'separated') return 'outside_only';
+  if (v === 'isolated') return 'designated';
+  if (v === 'no') return 'banned';
+  return 'unknown';
+}
+
+// Map a tag set onto the app's place type, a short reason for the description,
+// and a structured smoking verdict. Order matters — most specific first.
 function classify(tags: Record<string, string>): Classification | null {
   const smoking = tags.smoking;
   const amenity = tags.amenity;
   const shop = tags.shop;
 
-  // Explicit "smoking allowed" flag — the strongest signal we have.
+  // Explicit smoking=* flag — the strongest signal we have. Source: osm.
   if (smoking && ['yes', 'outside', 'dedicated', 'isolated', 'separated'].includes(smoking)) {
     const venue = amenity === 'bar' || amenity === 'pub' || amenity === 'cafe' || amenity === 'restaurant';
-    return { type: venue ? 'cafe' : 'spot', reason: `OSM tags this as smoking=${smoking}.` };
+    return {
+      type: venue ? 'cafe' : 'spot',
+      reason: `OSM tags this as smoking=${smoking}.`,
+      smokingStatus: statusFromSmokingTag(smoking),
+      smokingSource: 'osm',
+    };
   }
 
   // Designated smoking areas.
-  if (amenity === 'smoking_area') return { type: 'smoking_area', reason: 'Designated smoking area.' };
+  if (amenity === 'smoking_area') {
+    return { type: 'smoking_area', reason: 'Designated smoking area.', smokingStatus: 'designated', smokingSource: 'osm' };
+  }
 
-  // Retailers (legal/licensed only — we never tag illegal sellers).
-  if (shop === 'tobacco') return { type: 'shop', reason: 'Tobacconist.' };
-  if (shop === 'kiosk' || shop === 'newsagent') return { type: 'kiosk', reason: 'Kiosk — usually sells cigarettes.' };
+  // Retailers (legal/licensed only — we never tag illegal sellers). Not a place
+  // to smoke, so status stays unknown.
+  if (shop === 'tobacco') return { type: 'shop', reason: 'Tobacconist.', smokingStatus: 'unknown', smokingSource: 'unknown' };
+  if (shop === 'kiosk' || shop === 'newsagent') return { type: 'kiosk', reason: 'Kiosk — usually sells cigarettes.', smokingStatus: 'unknown', smokingSource: 'unknown' };
   if (shop === 'cannabis' || amenity === 'cannabis' || tags.cannabis === 'yes') {
-    return { type: 'dispensary', reason: 'Licensed cannabis retailer (per OSM).' };
+    return { type: 'dispensary', reason: 'Licensed cannabis retailer (per OSM).', smokingStatus: 'unknown', smokingSource: 'unknown' };
   }
 
-  // Open-air spots that suit a smoke.
-  if (tags.tourism === 'viewpoint') return { type: 'spot', reason: 'Viewpoint — open-air, a view.' };
-  if (amenity === 'biergarten') return { type: 'spot', reason: 'Beer garden — outdoor seating.' };
+  // Open-air spots that suit a smoke — outdoors, so "outside only" by inference.
+  if (tags.tourism === 'viewpoint') return { type: 'spot', reason: 'Viewpoint — open-air, a view.', smokingStatus: 'outside_only', smokingSource: 'unknown' };
+  if (amenity === 'biergarten') return { type: 'spot', reason: 'Beer garden — outdoor seating.', smokingStatus: 'outside_only', smokingSource: 'unknown' };
 
-  // Outdoor seating at a venue → you can usually smoke outside.
+  // Outdoor seating at a venue → you can usually smoke outside (inferred).
   if (tags.outdoor_seating === 'yes' && ['cafe', 'bar', 'pub', 'restaurant'].includes(amenity ?? '')) {
-    return { type: 'cafe', reason: 'Has outdoor seating — usually fine to smoke outside.' };
+    return { type: 'cafe', reason: 'Has outdoor seating — usually fine to smoke outside.', smokingStatus: 'outside_only', smokingSource: 'unknown' };
   }
 
-  // Benches — sit and smoke. Lowest priority so a tagged smoking bench above wins.
+  // Benches — sit and smoke. Outdoors → outside_only by inference.
   if (amenity === 'bench') {
     const view = tags.direction ? ' with an outlook' : '';
-    return { type: 'bench', reason: `Public bench${view}.` };
+    return { type: 'bench', reason: `Public bench${view}.`, smokingStatus: 'outside_only', smokingSource: 'unknown' };
   }
 
   return null;
@@ -193,6 +219,8 @@ async function scrapeCity(city: City) {
       city: city.name,
       region: city.region,
       description: cls.reason,
+      smoking_status: cls.smokingStatus,
+      smoking_status_source: cls.smokingSource,
       accessible: tags.wheelchair === 'yes' ? true : tags.wheelchair === 'no' ? false : null,
       tags: Object.entries(tags).slice(0, 20).map(([k, v]) => `${k}=${v}`),
       verified: true,

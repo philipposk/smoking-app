@@ -18,7 +18,24 @@ interface Place {
   merchant_claimed: boolean;
   photo_url: string | null;
   source: string;
+  smoking_status?: 'allowed' | 'outside_only' | 'designated' | 'banned' | 'unknown';
+  smoking_status_source?: 'osm' | 'legal_default' | 'community' | 'unknown';
 }
+
+// Verdict chip config. Colors lean on existing CSS vars where sensible.
+const SMOKING_VERDICT: Record<string, { label: string; bg: string; fg: string }> = {
+  allowed: { label: '✓ Smoking allowed', bg: '#2f7a52', fg: '#fff' },
+  outside_only: { label: '↗ Outdoors only', bg: '#c98a2a', fg: '#fff' },
+  designated: { label: '◉ Designated area', bg: '#4a8bc9', fg: '#fff' },
+  banned: { label: '✕ No smoking', bg: '#b9421a', fg: '#fff' },
+};
+
+const SMOKING_SOURCE_NOTE: Record<string, string> = {
+  osm: 'per OpenStreetMap',
+  legal_default: 'national law default',
+  community: 'reported by readers',
+  unknown: 'inferred from the location',
+};
 
 interface Review {
   id: string;
@@ -128,6 +145,25 @@ export default function PlaceDetail({ place, reviews: initialReviews }: { place:
           {place.merchant_claimed && <span className="tag">merchant-claimed</span>}
           {avg && <span className="tag">★ {avg} ({reviews.length})</span>}
         </div>
+
+        {place.smoking_status && SMOKING_VERDICT[place.smoking_status] && (
+          <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span
+              style={{
+                background: SMOKING_VERDICT[place.smoking_status].bg,
+                color: SMOKING_VERDICT[place.smoking_status].fg,
+                padding: '6px 14px', borderRadius: 999, fontSize: 14, fontWeight: 600,
+              }}
+            >
+              {SMOKING_VERDICT[place.smoking_status].label}
+            </span>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>
+              {SMOKING_SOURCE_NOTE[place.smoking_status_source ?? 'unknown']}
+              {place.smoking_status_source === 'unknown' || place.smoking_status_source === 'legal_default'
+                ? ' — confirm locally' : ''}
+            </span>
+          </div>
+        )}
       </header>
 
       {place.description && <p style={{ fontSize: 18, lineHeight: 1.6, marginBottom: 32 }}>{place.description}</p>}
