@@ -29,11 +29,29 @@ async function loadReviews(placeId: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
-    const place = await loadPlace(params.id);
+    const place: any = await loadPlace(params.id);
     if (!place) return { title: 'Place not found — Smoking' };
+    const where = [place.neighborhood, place.city, place.country].filter(Boolean).join(', ');
+    const title = `${place.name}${where ? ` · ${where}` : ''} — Smoking`;
+    const description =
+      place.description ||
+      `${place.name}${where ? ` in ${where}` : ''} — a ${String(place.type).replace('_', ' ')} on Smoking, the reader-kept field guide to places where you can still light up.`;
     return {
-      title: `${(place as any).name} — Smoking`,
-      description: (place as any).description ?? undefined,
+      title,
+      description,
+      alternates: { canonical: `/place/${params.id}` },
+      openGraph: {
+        title,
+        description,
+        type: 'website',
+        url: `/place/${params.id}`,
+        images: place.photo_url ? [{ url: place.photo_url }] : undefined,
+      },
+      twitter: {
+        card: place.photo_url ? 'summary_large_image' : 'summary',
+        title,
+        description,
+      },
     };
   } catch {
     return { title: 'Place — Smoking' };

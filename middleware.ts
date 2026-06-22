@@ -19,6 +19,12 @@ const PASSTHROUGH = [
   GATE_PATH,
   '/privacy',
   '/terms',
+  // Individual place listing pages are public so shared links unfurl (OG tags)
+  // and search engines can index them. The interactive app (/, /map, …) stays
+  // gated. A single listing showing one location + reviews is low-risk content.
+  '/place/',
+  '/sitemap.xml',
+  '/robots.txt',
   '/api/',
   '/_next/',
   '/manifest.json',

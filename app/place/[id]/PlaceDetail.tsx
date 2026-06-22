@@ -36,6 +36,18 @@ export default function PlaceDetail({ place, reviews: initialReviews }: { place:
   const [err, setErr] = useState('');
   const [flagBusy, setFlagBusy] = useState(false);
   const [flagged, setFlagged] = useState(false);
+  const [shared, setShared] = useState(false);
+
+  const share = async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    const data = { title: place.name, text: `${place.name} — a spot on Smoking`, url };
+    try {
+      if (navigator.share) { await navigator.share(data); return; }
+      await navigator.clipboard.writeText(url);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    } catch { /* user cancelled share — ignore */ }
+  };
 
   useEffect(() => {
     fetch('/api/auth/session').then((r) => r.json()).then((j) => setUser(j.user ?? null)).catch(() => {});
@@ -125,16 +137,29 @@ export default function PlaceDetail({ place, reviews: initialReviews }: { place:
         <p style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--muted)' }}>
           {place.lat.toFixed(5)}, {place.lng.toFixed(5)}
         </p>
-        <p style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="btn btn-ink"
+            style={{ textDecoration: 'none' }}
+          >
+            Directions ↗
+          </a>
+          <button onClick={share} className="btn btn-ghost">
+            {shared ? 'Link copied' : 'Share'}
+          </button>
           <a
             href={`https://www.openstreetmap.org/?mlat=${place.lat}&mlon=${place.lng}#map=18/${place.lat}/${place.lng}`}
             target="_blank"
             rel="noreferrer noopener"
-            style={{ textDecoration: 'underline' }}
+            className="btn btn-ghost"
+            style={{ textDecoration: 'none' }}
           >
-            Open in OpenStreetMap ↗
+            OpenStreetMap ↗
           </a>
-        </p>
+        </div>
         <div style={{ marginTop: 16 }}>
           <MapillaryEmbed lat={place.lat} lng={place.lng} />
         </div>
