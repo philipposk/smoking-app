@@ -1,12 +1,27 @@
 /**
- * Scrape OpenStreetMap via the Overpass API for:
- *   - shop=tobacco                 → type: "shop"
- *   - amenity=bench                → type: "bench"
- *   - amenity=smoking_area         → type: "smoking_area"
+ * Scrape OpenStreetMap via the Overpass API for smoking-relevant places.
  *
- * Run city-by-city to stay within Overpass rate limits.
- * Each result is upserted into public.places with external_id = osm:<type>/<id>,
- * so re-runs are idempotent.
+ * Why OSM: free, worldwide, structured, no anti-bot. It's the cheapest and most
+ * efficient source for this kind of POI data — far better than scraping retail
+ * sites. We map OSM tags onto the app's place `type` enum:
+ *
+ *   shop=tobacco                         → shop          (buy cigarettes)
+ *   shop=kiosk / shop=newsagent          → kiosk         (usually sell cigarettes)
+ *   shop=cannabis / *=cannabis           → dispensary    (LICENSED cannabis only)
+ *   amenity=bench                        → bench         (sit + smoke)
+ *   tourism=viewpoint                    → spot          (open-air, a view)
+ *   amenity=biergarten                   → spot          (outdoor beer garden)
+ *   amenity=smoking_area                 → smoking_area  (designated)
+ *   smoking=yes|outside|dedicated|...    → cafe/spot     (EXPLICITLY allowed)
+ *   outdoor_seating=yes on cafe/bar/pub  → cafe          (likely smoking outside)
+ *
+ * The `smoking=*` tag is the key signal — it's OSM's own "is smoking allowed
+ * here" flag. We record WHY each place qualifies in `description`.
+ *
+ * Etiquette: the public Overpass instance rate-limits hard and discourages
+ * concurrency, so we run cities sequentially with polite delays AND exponential
+ * backoff on 429/504/timeout (transient failures no longer drop a whole city).
+ * For large-scale ingestion, self-host Overpass or point OVERPASS_URL at a mirror.
  *
  *   npm run scrape:osm                 # all cities
  *   npm run scrape:osm -- athens tokyo # specific cities
@@ -16,7 +31,9 @@ import { adminClient } from './lib/db';
 import { CITIES, City } from './cities';
 
 const OVERPASS_URL = process.env.OVERPASS_URL ?? 'https://overpass-api.de/api/interpreter';
-const SLEEP_MS = 2_000; // be polite
+const SLEEP_MS = 2_000;        // politeness delay between cities
+const MAX_RETRIES = 4;         // per city, on transient Overpass errors
+const BASE_BACKOFF_MS = 3_000; // exponential: 3s, 6s, 12s, 24s
 
 type OsmEl = {
   type: 'node' | 'way' | 'relation';
@@ -27,45 +44,124 @@ type OsmEl = {
   tags?: Record<string, string>;
 };
 
+type Classification = { type: string; reason: string };
+
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function placeTypeFor(tags: Record<string, string>): string | null {
-  if (tags.shop === 'tobacco') return 'shop';
-  if (tags.amenity === 'bench') return 'bench';
-  if (tags.amenity === 'smoking_area') return 'smoking_area';
+// Map a tag set onto the app's place type, plus a short human reason for the
+// description. Order matters — most specific / most useful signal first.
+function classify(tags: Record<string, string>): Classification | null {
+  const smoking = tags.smoking;
+  const amenity = tags.amenity;
+  const shop = tags.shop;
+
+  // Explicit "smoking allowed" flag — the strongest signal we have.
+  if (smoking && ['yes', 'outside', 'dedicated', 'isolated', 'separated'].includes(smoking)) {
+    const venue = amenity === 'bar' || amenity === 'pub' || amenity === 'cafe' || amenity === 'restaurant';
+    return { type: venue ? 'cafe' : 'spot', reason: `OSM tags this as smoking=${smoking}.` };
+  }
+
+  // Designated smoking areas.
+  if (amenity === 'smoking_area') return { type: 'smoking_area', reason: 'Designated smoking area.' };
+
+  // Retailers (legal/licensed only — we never tag illegal sellers).
+  if (shop === 'tobacco') return { type: 'shop', reason: 'Tobacconist.' };
+  if (shop === 'kiosk' || shop === 'newsagent') return { type: 'kiosk', reason: 'Kiosk — usually sells cigarettes.' };
+  if (shop === 'cannabis' || amenity === 'cannabis' || tags.cannabis === 'yes') {
+    return { type: 'dispensary', reason: 'Licensed cannabis retailer (per OSM).' };
+  }
+
+  // Open-air spots that suit a smoke.
+  if (tags.tourism === 'viewpoint') return { type: 'spot', reason: 'Viewpoint — open-air, a view.' };
+  if (amenity === 'biergarten') return { type: 'spot', reason: 'Beer garden — outdoor seating.' };
+
+  // Outdoor seating at a venue → you can usually smoke outside.
+  if (tags.outdoor_seating === 'yes' && ['cafe', 'bar', 'pub', 'restaurant'].includes(amenity ?? '')) {
+    return { type: 'cafe', reason: 'Has outdoor seating — usually fine to smoke outside.' };
+  }
+
+  // Benches — sit and smoke. Lowest priority so a tagged smoking bench above wins.
+  if (amenity === 'bench') {
+    const view = tags.direction ? ' with an outlook' : '';
+    return { type: 'bench', reason: `Public bench${view}.` };
+  }
+
   return null;
+}
+
+function defaultName(type: string): string {
+  switch (type) {
+    case 'shop': return 'Tobacconist';
+    case 'kiosk': return 'Kiosk';
+    case 'dispensary': return 'Cannabis retailer';
+    case 'bench': return 'Bench';
+    case 'smoking_area': return 'Smoking area';
+    case 'cafe': return 'Café (outdoor)';
+    default: return 'Smoking spot';
+  }
 }
 
 function queryFor(city: City): string {
   const [minLng, minLat, maxLng, maxLat] = city.bbox;
-  // Overpass bbox is south,west,north,east
-  const bbox = `${minLat},${minLng},${maxLat},${maxLng}`;
+  // Overpass bbox order is south,west,north,east.
+  const b = `${minLat},${minLng},${maxLat},${maxLng}`;
+  // nwr = node|way|relation in one go. `out center tags` gives a point for ways/relations.
   return `
-    [out:json][timeout:90];
+    [out:json][timeout:120];
     (
-      node["shop"="tobacco"](${bbox});
-      way["shop"="tobacco"](${bbox});
-      node["amenity"="bench"](${bbox});
-      node["amenity"="smoking_area"](${bbox});
-      way["amenity"="smoking_area"](${bbox});
+      nwr["shop"="tobacco"](${b});
+      nwr["shop"="kiosk"](${b});
+      nwr["shop"="newsagent"](${b});
+      nwr["shop"="cannabis"](${b});
+      nwr["amenity"="cannabis"](${b});
+      nwr["amenity"="smoking_area"](${b});
+      nwr["amenity"="biergarten"](${b});
+      nwr["tourism"="viewpoint"](${b});
+      nwr["smoking"="yes"](${b});
+      nwr["smoking"="outside"](${b});
+      nwr["smoking"="dedicated"](${b});
+      nwr["smoking"="isolated"](${b});
+      nwr["smoking"="separated"](${b});
+      node["amenity"="bench"](${b});
+      nwr["outdoor_seating"="yes"]["amenity"~"^(cafe|bar|pub|restaurant)$"](${b});
     );
     out center tags;
   `;
 }
 
 async function fetchOverpass(query: string): Promise<OsmEl[]> {
-  const res = await fetch(OVERPASS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'data=' + encodeURIComponent(query),
-  });
-  if (!res.ok) {
-    throw new Error(`Overpass ${res.status}: ${await res.text().catch(() => '')}`);
+  let lastErr: Error | null = null;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      const wait = BASE_BACKOFF_MS * 2 ** (attempt - 1);
+      console.log(`    …retry ${attempt}/${MAX_RETRIES} after ${Math.round(wait / 1000)}s`);
+      await sleep(wait);
+    }
+    try {
+      const res = await fetch(OVERPASS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'smoking-app/1.0 (OSM POI ingest; contact hello@6x7.gr)',
+        },
+        body: 'data=' + encodeURIComponent(query),
+      });
+      // 429 (too many requests) and 504 (gateway timeout) are Overpass's
+      // standard "busy, back off" responses — retry them.
+      if (res.status === 429 || res.status === 504) {
+        lastErr = new Error(`Overpass ${res.status} (busy)`);
+        continue;
+      }
+      if (!res.ok) throw new Error(`Overpass ${res.status}: ${await res.text().catch(() => '')}`);
+      const json = await res.json();
+      return (json.elements ?? []) as OsmEl[];
+    } catch (e: any) {
+      lastErr = e; // network/parse error — also worth a retry
+    }
   }
-  const json = await res.json();
-  return (json.elements ?? []) as OsmEl[];
+  throw lastErr ?? new Error('Overpass failed');
 }
 
 async function scrapeCity(city: City) {
@@ -73,37 +169,43 @@ async function scrapeCity(city: City) {
   const els = await fetchOverpass(queryFor(city));
   console.log(`  -> ${els.length} elements`);
 
+  const seen = new Set<string>();
   const rows = els.flatMap((el) => {
     const tags = el.tags ?? {};
-    const type = placeTypeFor(tags);
-    if (!type) return [];
+    const cls = classify(tags);
+    if (!cls) return [];
     const lat = el.lat ?? el.center?.lat;
     const lng = el.lon ?? el.center?.lon;
     if (lat == null || lng == null) return [];
-    const name =
-      tags.name ??
-      (type === 'shop' ? 'Tobacco shop'
-        : type === 'bench' ? 'Bench'
-        : 'Smoking area');
+
+    const external_id = `osm:${el.type}/${el.id}`;
+    if (seen.has(external_id)) return []; // a node can match two filters
+    seen.add(external_id);
+
     return [{
-      external_id: `osm:${el.type}/${el.id}`,
+      external_id,
       source: 'osm',
-      name,
-      type,
+      name: tags.name ?? tags['name:en'] ?? defaultName(cls.type),
+      type: cls.type,
       lat,
       lng,
       country: city.country,
       city: city.name,
       region: city.region,
+      description: cls.reason,
+      accessible: tags.wheelchair === 'yes' ? true : tags.wheelchair === 'no' ? false : null,
       tags: Object.entries(tags).slice(0, 20).map(([k, v]) => `${k}=${v}`),
       verified: true,
     }];
   });
 
-  if (rows.length === 0) return;
+  if (rows.length === 0) {
+    console.log('  ok: nothing to upsert');
+    return;
+  }
 
   const sb = adminClient();
-  // Chunk to avoid massive payloads
+  let upserted = 0;
   for (let i = 0; i < rows.length; i += 500) {
     const chunk = rows.slice(i, i + 500);
     const { error } = await sb
@@ -113,8 +215,9 @@ async function scrapeCity(city: City) {
       console.error(`  ! upsert error: ${error.message}`);
       break;
     }
+    upserted += chunk.length;
   }
-  console.log(`  ok: upserted ${rows.length} places`);
+  console.log(`  ok: upserted ${upserted} places`);
 }
 
 async function main() {
@@ -130,14 +233,19 @@ async function main() {
     process.exit(2);
   }
 
+  let ok = 0;
+  let failed = 0;
   for (const c of targets) {
     try {
       await scrapeCity(c);
+      ok++;
     } catch (e: any) {
       console.error(`  ! ${c.slug} failed: ${e.message}`);
+      failed++;
     }
     await sleep(SLEEP_MS);
   }
+  console.log(`\nDone. ${ok} cities ok, ${failed} failed, of ${targets.length}.`);
 }
 
 main().catch((e) => {

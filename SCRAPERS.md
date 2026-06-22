@@ -27,11 +27,27 @@ Cities are listed in [`scripts/cities.ts`](scripts/cities.ts). To add one:
 grab a bounding box from <https://boundingbox.klokantech.com> ("CSV raw"
 format) and append a row.
 
-What it grabs per city:
+What it grabs per city (mapped onto the app's place `type`):
 
-- `shop=tobacco` → tobacco shops
-- `amenity=bench` → public benches
-- `amenity=smoking_area` → designated smoking areas
+| OSM tag | type | why it's a smoking place |
+|---|---|---|
+| `smoking=yes\|outside\|dedicated\|isolated\|separated` | cafe / spot | **explicitly** smoking-allowed (OSM's own flag) |
+| `amenity=smoking_area` | smoking_area | designated area |
+| `shop=tobacco` | shop | buy cigarettes |
+| `shop=kiosk` / `shop=newsagent` | kiosk | usually sell cigarettes |
+| `shop=cannabis` / `amenity=cannabis` | dispensary | **licensed** cannabis only |
+| `tourism=viewpoint` | spot | open-air, a view |
+| `amenity=biergarten` | spot | outdoor beer garden |
+| `amenity=bench` | bench | sit + smoke |
+| `outdoor_seating=yes` on cafe/bar/pub/restaurant | cafe | smoke outside |
+
+The **`smoking=*` tag is the key signal** — it's OSM's own "is smoking allowed
+here" flag. Each row records *why* it qualified in its `description`. We only
+ingest **licensed** retailers; we never map illegal sellers.
+
+Reliability: cities run sequentially (Overpass discourages concurrency) with
+exponential backoff on `429`/`504`/timeout, so a busy-server blip retries
+instead of dropping the whole city.
 
 Heads up: benches are dense in big cities (Tokyo alone has tens of thousands).
 Expect each big city to take 10-30 seconds and write a few thousand rows.

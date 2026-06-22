@@ -1445,12 +1445,14 @@ function LivePlacesView({ mode, setMode }) {
           <div className="places-filters" style={{borderTop: "1px solid var(--hair)", borderBottom: 0, padding: "14px 0", flexWrap: "wrap"}}>
             {[
               ["all", `All · ${data.places.length}`],
-              ["shop", `Shops · ${typeCounts.shop}`],
+              ["spot", `Spots · ${typeCounts.spot}`],
               ["bench", `Benches · ${typeCounts.bench}`],
+              ["cafe", `Outdoor cafés · ${typeCounts.cafe}`],
               ["smoking_area", `Smoking areas · ${typeCounts.smoking_area}`],
-              ["cafe", `Cafés · ${typeCounts.cafe}`],
+              ["shop", `Shops · ${typeCounts.shop}`],
               ["kiosk", `Kiosks · ${typeCounts.kiosk}`],
-            ].map(([k, label]) => (
+              ["dispensary", `Cannabis · ${typeCounts.dispensary}`],
+            ].filter(([k]) => k === "all" || typeCounts[k] > 0).map(([k, label]) => (
               <button
                 key={k}
                 className={`chip ${typeFilter === k ? "active" : ""}`}
