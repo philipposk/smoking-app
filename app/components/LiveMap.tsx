@@ -36,15 +36,23 @@ export default function LiveMap({
   initialZoom = 1.8,
   initialCenter = [20, 30] as [number, number],
   height = 'calc(100vh - 220px)',
+  onBoundsChange,
 }: {
   places: Place[];
   initialZoom?: number;
   initialCenter?: [number, number];
   height?: string;
+  // Fires (debounced) on map idle with [west, south, east, north] so the parent
+  // can fetch only the places in view — the key to scaling past a few k markers.
+  onBoundsChange?: (bbox: [number, number, number, number]) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Keep the latest callback in a ref so the init effect doesn't re-register on
+  // every parent render (which would tear down + rebuild the map).
+  const onBoundsRef = useRef(onBoundsChange);
+  onBoundsRef.current = onBoundsChange;
   // Bumping this re-runs the init effect — that's what makes "Retry" actually
   // rebuild the map instead of leaving the container permanently blank.
   const [retryKey, setRetryKey] = useState(0);
@@ -187,8 +195,21 @@ export default function LiveMap({
       });
     });
 
+    // Debounced viewport reporting so the parent can fetch only what's in view.
+    let boundsTimer: ReturnType<typeof setTimeout> | undefined;
+    const reportBounds = () => {
+      if (!onBoundsRef.current) return;
+      clearTimeout(boundsTimer);
+      boundsTimer = setTimeout(() => {
+        const b = map.getBounds();
+        onBoundsRef.current?.([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+      }, 350);
+    };
+    map.on('moveend', reportBounds);
+
     mapRef.current = map;
     return () => {
+      clearTimeout(boundsTimer);
       map.remove();
       mapRef.current = null;
     };

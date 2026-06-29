@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import LiveMap from './LiveMap';
 
 interface Place {
@@ -42,6 +42,24 @@ export default function FullMapView() {
   const [status, setStatus] = useState<'loading' | 'ok' | 'seed'>('loading');
   const [places, setPlaces] = useState<Place[]>([]);
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const statusRef = useRef(status);
+  statusRef.current = status;
+  const bboxAbort = useRef<AbortController | null>(null);
+
+  // As the user pans/zooms, fetch only the places in the current viewport.
+  // This is what lets the map scale past a few thousand markers. Skipped when
+  // there's no live DB (seed mode) — the 9 seed places stay put.
+  const onBoundsChange = useCallback((bbox: [number, number, number, number]) => {
+    if (statusRef.current !== 'ok') return;
+    const [w, s, e, n] = bbox;
+    bboxAbort.current?.abort();
+    const ctrl = new AbortController();
+    bboxAbort.current = ctrl;
+    fetch(`/api/places?bbox=${w},${s},${e},${n}&limit=1500`, { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (j?.places) setPlaces(j.places); })
+      .catch(() => {}); // aborted or network — ignore
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -124,6 +142,7 @@ export default function FullMapView() {
             initialZoom={2}
             initialCenter={[20, 20]}
             height="100%"
+            onBoundsChange={onBoundsChange}
           />
         )}
       </div>
