@@ -13,6 +13,7 @@ interface Place {
   country?: string | null;
   source?: string;
   verified?: boolean;
+  smoking_status?: string | null;
 }
 
 // Seed places shown when the API returns nothing (Supabase not wired yet).

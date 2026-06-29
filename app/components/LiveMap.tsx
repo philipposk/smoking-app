@@ -12,7 +12,16 @@ interface Place {
   type: string;
   city?: string | null;
   country?: string | null;
+  smoking_status?: string | null;
 }
+
+// Short verdict labels for the map popup (mirrors the place-page chip).
+const SMOKING_LABEL: Record<string, string> = {
+  allowed: '✓ Smoking allowed',
+  outside_only: '↗ Outdoors only',
+  designated: '◉ Designated area',
+  banned: '✕ No smoking',
+};
 
 const TYPE_COLOR: Record<string, string> = {
   shop: '#B9421A',
@@ -69,6 +78,7 @@ export default function LiveMap({
           type: p.type,
           color: TYPE_COLOR[p.type] ?? '#B9421A',
           loc: [p.city, p.country].filter(Boolean).join(' · '),
+          verdict: p.smoking_status ? (SMOKING_LABEL[p.smoking_status] ?? '') : '',
         },
         geometry: { type: 'Point' as const, coordinates: [p.lng, p.lat] },
       })),
@@ -183,6 +193,7 @@ export default function LiveMap({
             `<div style="font-family:system-ui;font-size:13px;line-height:1.4">
                <div style="font-weight:600">${escapeHtml(f.properties.name)}</div>
                <div style="color:#7A7065;font-size:11px">${escapeHtml(f.properties.loc ?? '')} · ${escapeHtml(f.properties.type)}</div>
+               ${f.properties.verdict ? `<div style="font-size:12px;font-weight:600;margin-top:3px">${escapeHtml(f.properties.verdict)}</div>` : ''}
                <a href="/place/${encodeURIComponent(f.properties.id)}" style="color:#B9421A;text-decoration:underline;font-size:12px;display:inline-block;margin-top:4px">Open ↗</a>
              </div>`,
           )
