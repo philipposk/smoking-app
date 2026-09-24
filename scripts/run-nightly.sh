@@ -13,8 +13,9 @@ LOG="scripts/logs/nightly-$TS.log"
 
 {
   echo "=== nightly run @ $(date -u +%FT%TZ) ==="
-  echo "--- seed (editorial) ---"
+  echo "--- seed (editorial + demo) ---"
   npm run --silent seed:places || echo "seed failed"
+  npm run --silent seed:demo || echo "demo seed failed"
   echo "--- osm ---"
   npm run --silent scrape:osm || echo "osm failed"
   echo "--- retailers ---"

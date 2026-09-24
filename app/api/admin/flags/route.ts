@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { currentUser } from '@/lib/auth/session';
+import { TABLES } from '@/lib/supabase/tables';
 
 async function requireAdmin() {
   const user = await currentUser();
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
   if (deny) return deny;
   const status = request.nextUrl.searchParams.get('status') ?? 'open';
   const { data, error } = await supabaseAdmin()
-    .from('flags')
+    .from(TABLES.flags)
     .select('*, reporter:users!reporter_user_id(username)')
     .eq('status', status)
     .order('created_at', { ascending: false })
@@ -38,13 +39,13 @@ const PatchBody = z.object({
 async function actOnTarget(sb: ReturnType<typeof supabaseAdmin>, type: string, id: string) {
   switch (type) {
     case 'place':
-      return sb.from('places').update({ verified: false }).eq('id', id);
+      return sb.from(TABLES.places).update({ verified: false }).eq('id', id);
     case 'review':
-      return sb.from('reviews').delete().eq('id', id);
+      return sb.from(TABLES.reviews).delete().eq('id', id);
     case 'forum_post':
-      return sb.from('forum_posts').delete().eq('id', id);
+      return sb.from(TABLES.forumPosts).delete().eq('id', id);
     case 'forum_reply':
-      return sb.from('forum_replies').delete().eq('id', id);
+      return sb.from(TABLES.forumReplies).delete().eq('id', id);
     default:
       return { error: null };
   }
@@ -61,7 +62,7 @@ export async function PATCH(request: NextRequest) {
 
   // Load the flag first to know what target to act on.
   const { data: flag, error: loadErr } = await sb
-    .from('flags')
+    .from(TABLES.flags)
     .select('target_type, target_id')
     .eq('id', body.id)
     .maybeSingle();
@@ -75,7 +76,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const { data, error } = await sb
-    .from('flags')
+    .from(TABLES.flags)
     .update({
       status: body.status,
       reviewed_by: user!.id,

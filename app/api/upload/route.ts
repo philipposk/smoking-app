@@ -3,15 +3,12 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { currentUser } from '@/lib/auth/session';
 import { writeLimit } from '@/lib/rate-limit';
+import { STORAGE_BUCKET } from '@/lib/supabase/tables';
 
 // POST /api/upload  { kind: 'avatar' | 'place' | 'claim', ext: 'jpg' | 'png' | 'webp' }
 //   → { uploadUrl, publicUrl, path }
 //
-// Client then PUTs the file bytes to uploadUrl directly. Bucket 'public' must
-// exist in Supabase Storage with public-read enabled. Create it via the
-// dashboard or run:
-//
-//   insert into storage.buckets (id, name, public) values ('public', 'public', true);
+// Client PUTs file bytes to uploadUrl. Bucket `smoking` is created by migration 0010.
 
 const Body = z.object({
   kind: z.enum(['avatar', 'place', 'claim']),
@@ -36,17 +33,17 @@ export async function POST(request: NextRequest) {
 
   const sb = supabaseAdmin();
   const { data, error } = await sb.storage
-    .from('public')
+    .from(STORAGE_BUCKET)
     .createSignedUploadUrl(path);
 
   if (error || !data) {
     return NextResponse.json(
-      { error: error?.message ?? 'Could not create upload URL. Is the "public" bucket created?' },
+      { error: error?.message ?? 'Could not create upload URL. Is the "smoking" storage bucket created?' },
       { status: 500 },
     );
   }
 
-  const { data: pub } = sb.storage.from('public').getPublicUrl(path);
+  const { data: pub } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(path);
   return NextResponse.json({
     uploadUrl: data.signedUrl,
     token: data.token,

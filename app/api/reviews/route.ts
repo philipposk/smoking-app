@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { currentUser, requireWriter } from '@/lib/auth/session';
 import { writeLimit } from '@/lib/rate-limit';
+import { TABLES } from '@/lib/supabase/tables';
 
 export async function GET(request: NextRequest) {
   const p = request.nextUrl.searchParams;
@@ -10,8 +11,8 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(parseInt(p.get('limit') ?? '100', 10) || 100, 200);
   const offset = Math.max(parseInt(p.get('offset') ?? '0', 10) || 0, 0);
   let q = supabaseAdmin()
-    .from('reviews')
-    .select('id, place_id, user_id, rating, body, created_at, users:users(username, avatar_url)')
+    .from(TABLES.reviews)
+    .select('id, place_id, user_id, rating, body, created_at, users:smoking_users(username, avatar_url)')
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
   if (placeId) q = q.eq('place_id', placeId);
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
 
   // Upsert so a user can update their existing review
   const { data, error } = await supabaseAdmin()
-    .from('reviews')
+    .from(TABLES.reviews)
     .upsert(
       { place_id: parsed.placeId, user_id: user.id, rating: parsed.rating, body: parsed.body ?? null },
       { onConflict: 'place_id,user_id' },
@@ -62,7 +63,7 @@ export async function DELETE(request: NextRequest) {
   if (!placeId) return NextResponse.json({ error: 'placeId required' }, { status: 400 });
 
   const { error } = await supabaseAdmin()
-    .from('reviews')
+    .from(TABLES.reviews)
     .delete()
     .eq('place_id', placeId)
     .eq('user_id', user.id);

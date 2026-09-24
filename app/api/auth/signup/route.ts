@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { createSession } from '@/lib/auth/session';
 import { authLimit } from '@/lib/rate-limit';
 import { sendEmail } from '@/lib/email';
+import { TABLES } from '@/lib/supabase/tables';
 
 const Body = z.object({
   username: z.string().trim().min(3).max(32).regex(/^[a-zA-Z0-9_.-]+$/),
@@ -30,8 +31,8 @@ export async function POST(request: NextRequest) {
   // (the username regex above forbids `,()` but doing this cleanly removes
   //  the whole class of injection concern for future maintainers).
   const [{ data: byUser }, { data: byEmail }] = await Promise.all([
-    sb.from('users').select('id').eq('username', parsed.username).maybeSingle(),
-    sb.from('users').select('id').eq('email', parsed.email).maybeSingle(),
+    sb.from(TABLES.users).select('id').eq('username', parsed.username).maybeSingle(),
+    sb.from(TABLES.users).select('id').eq('email', parsed.email).maybeSingle(),
   ]);
 
   if (byUser || byEmail) {
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
   const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
   const { data: user, error } = await sb
-    .from('users')
+    .from(TABLES.users)
     .insert({
       username: parsed.username,
       email: parsed.email,

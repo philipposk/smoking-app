@@ -1,3 +1,4 @@
+import { TABLES } from '../lib/supabase/tables';
 /**
  * Load the curated editorial PLACES from the design into Supabase.
  * Idempotent: re-running upserts on external_id='seed:<slug>'.
@@ -19,6 +20,18 @@ const PLACES = [
   { id: 'marrakech-riad',   name: 'Le Jardin',                     neighborhood: 'Medina',      city: 'Marrakech',     country: 'Morocco',   region: 'Africa',   lng: -7.9858,  lat: 31.6324, description: 'A green riad courtyard tucked behind an unmarked door in the souk. Mint tea, tortoises underfoot, a sky-blue ceiling of leaves.', tags: ['hidden','afternoon','outdoor'] },
   { id: 'beirut-rooftop',   name: 'Mar Mikhael Rooftops',          neighborhood: 'Mar Mikhael', city: 'Beirut',        country: 'Lebanon',   region: 'Asia',     lng: 35.5276,  lat: 33.8975, description: 'A strip of converted warehouses with rooftop bars facing the port. Nargile coals glowing on every other table.', tags: ['nightlife','view','rooftop'] },
   { id: 'marais-paris',     name: 'Place des Vosges',              neighborhood: 'Le Marais',   city: 'Paris',         country: 'France',    region: 'Europe',   lng: 2.3656,   lat: 48.8553, description: 'Red-brick arcades around a tree-lined square. Every café on the perimeter spills onto the pavement, every table has its tin ashtray.', tags: ['outdoor','iconic','café'] },
+  // Copenhagen — outdoor terraces + Christiania + known tobacconists
+  { id: 'copenhagen-nyhavn',      name: 'Nyhavn Harbour Terraces',       neighborhood: 'Indre By',    city: 'Copenhagen', country: 'Denmark', region: 'Europe', lng: 12.5903, lat: 55.6799, description: 'Colourful canal-side cafés with heated outdoor tables. Danes still smoke outside here — grab a Carlsberg and a bench along the quay.', tags: ['outdoor','iconic','evening'] },
+  { id: 'copenhagen-christiania', name: 'Freetown Christiania',          neighborhood: 'Christianshavn', city: 'Copenhagen', country: 'Denmark', region: 'Europe', lng: 12.6012, lat: 55.6736, description: 'The autonomous quarter where cannabis is openly sold on Pusher Street and outdoor smoking is part of daily life. Check local rules before visiting.', tags: ['outdoor','iconic','cannabis'] },
+  { id: 'copenhagen-staer',       name: 'Stær Tobak',                    neighborhood: 'Nørrebro',    city: 'Copenhagen', country: 'Denmark', region: 'Europe', lng: 12.5534, lat: 55.6921, description: 'Classic Copenhagen tobacconist on Nørrebrogade — pipes, rolling tobacco, and Danish cigarillos since the 1970s.', tags: ['shop','tobacco'] },
+  // Athens — beyond Plaka
+  { id: 'athens-exarchia',  name: 'Exarchia Square Terraces',      neighborhood: 'Exarchia',    city: 'Athens',        country: 'Greece',    region: 'Europe',   lng: 23.7345,  lat: 37.9876, description: 'Student-quarter cafés spilling onto the pavement. Cheap beer, political graffiti, and nobody minds a cigarette at the outside tables.', tags: ['outdoor','evening','café'] },
+  { id: 'athens-poeta',     name: 'Poeta Tobacconist',             neighborhood: 'Kolonaki',    city: 'Athens',        country: 'Greece',    region: 'Europe',   lng: 23.7412,  lat: 37.9778, description: 'Upscale tobacconist on Skoufa Street — Cuban cigars, Greek rolling tobacco, and a humidor room locals swear by.', tags: ['shop','tobacco'] },
+  { id: 'athens-lycabettus', name: 'Lycabettus Hill Lookout',      neighborhood: 'Kolonaki',    city: 'Athens',        country: 'Greece',    region: 'Europe',   lng: 23.7451,  lat: 37.9818, description: 'The highest point in central Athens. Stone benches under pine trees, the whole basin below you, and a breeze that carries the smoke away.', tags: ['view','outdoor','sunset'] },
+  // Lesvos — island terraces and harbour walls
+  { id: 'molyvos-harbour',  name: 'Molyvos Harbour Tavernas',      neighborhood: 'Molyvos',     city: 'Lesvos',        country: 'Greece',    region: 'Europe',   lng: 26.1758,  lat: 39.3689, description: 'Stone quay lined with ouzeri tables facing the castle. Fishermen mend nets next to your chair; the whole harbour smells of grilled octopus and tobacco.', tags: ['outdoor','evening','seafront'] },
+  { id: 'mytilene-waterfront', name: 'Mytilene Castle Promenade', neighborhood: 'Mytilene',    city: 'Lesvos',        country: 'Greece',    region: 'Europe',   lng: 26.5558,  lat: 39.1012, description: 'The stone walkway below the Byzantine castle. Benches every fifty metres, ferries sliding past, and late sunsets over Turkey across the strait.', tags: ['view','outdoor','sunset'] },
+  { id: 'petra-monastery',  name: 'Petra Rock Terrace',            neighborhood: 'Petra',       city: 'Lesvos',        country: 'Greece',    region: 'Europe',   lng: 26.1765,  lat: 39.3301, description: 'Climb the 114 steps to Panagia Glykofilousa church, then sit on the rock ledge above the village. Locals come up here after dinner with a coffee and a cigarette.', tags: ['view','hidden','outdoor'] },
 ];
 
 async function main() {
@@ -40,7 +53,7 @@ async function main() {
   }));
 
   const { error, count } = await sb
-    .from('places')
+    .from(TABLES.places)
     .upsert(rows, { onConflict: 'external_id', count: 'exact' });
 
   if (error) {

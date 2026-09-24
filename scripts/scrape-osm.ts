@@ -1,3 +1,4 @@
+import { TABLES } from '../lib/supabase/tables';
 /**
  * Scrape OpenStreetMap via the Overpass API for smoking-relevant places.
  *
@@ -237,7 +238,7 @@ async function scrapeCity(city: City) {
   for (let i = 0; i < rows.length; i += 500) {
     const chunk = rows.slice(i, i + 500);
     const { error } = await sb
-      .from('places')
+      .from(TABLES.places)
       .upsert(chunk, { onConflict: 'external_id', ignoreDuplicates: false });
     if (error) {
       console.error(`  ! upsert error: ${error.message}`);

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { createSession } from '@/lib/auth/session';
 import { authLimit } from '@/lib/rate-limit';
+import { TABLES } from '@/lib/supabase/tables';
 
 const Body = z.object({
   username: z.string().trim().min(1),
@@ -27,8 +28,8 @@ export async function POST(request: NextRequest) {
   const identifier = parsed.username;
   const cols = 'id, username, email, role, avatar_url, bio, created_at, password_hash';
   const [{ data: byUser }, { data: byEmail }] = await Promise.all([
-    sb.from('users').select(cols).eq('username', identifier).maybeSingle(),
-    sb.from('users').select(cols).eq('email', identifier.toLowerCase()).maybeSingle(),
+    sb.from(TABLES.users).select(cols).eq('username', identifier).maybeSingle(),
+    sb.from(TABLES.users).select(cols).eq('email', identifier.toLowerCase()).maybeSingle(),
   ]);
   const user = byUser ?? byEmail;
 

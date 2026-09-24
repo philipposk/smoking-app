@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { TABLES } from '@/lib/supabase/tables';
 
 // /api/places/nearby?lat=..&lng=..&radiusKm=5&limit=50
 // Returns places within radius, sorted by haversine distance.
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
   const dLng = radiusKm / (111 * Math.max(Math.cos((lat * Math.PI) / 180), 0.01));
 
   let q = supabaseAdmin()
-    .from('places')
+    .from(TABLES.places)
     .select('id,external_id,name,type,lat,lng,country,city,neighborhood,description,photo_url,source,verified')
     .eq('verified', true)
     .gte('lat', lat - dLat).lte('lat', lat + dLat)

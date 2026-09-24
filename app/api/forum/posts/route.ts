@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireWriter } from '@/lib/auth/session';
 import { writeLimit } from '@/lib/rate-limit';
+import { TABLES } from '@/lib/supabase/tables';
 
 export async function GET(request: NextRequest) {
   const p = request.nextUrl.searchParams;
@@ -11,8 +12,8 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(parseInt(p.get('limit') ?? '50', 10) || 50, 200);
 
   let q = supabaseAdmin()
-    .from('forum_posts')
-    .select('id, user_id, title, body, category, created_at, users:users(username, avatar_url)')
+    .from(TABLES.forumPosts)
+    .select('id, user_id, title, body, category, created_at, users:smoking_users(username, avatar_url), forum_replies:smoking_forum_replies(count)')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data, error } = await supabaseAdmin()
-    .from('forum_posts')
+    .from(TABLES.forumPosts)
     .insert({ ...parsed, user_id: user.id })
     .select('*')
     .single();

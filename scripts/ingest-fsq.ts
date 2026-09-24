@@ -1,3 +1,4 @@
+import { TABLES } from '../lib/supabase/tables';
 /**
  * Ingest Foursquare Open Source Places (Apache-2.0, ~100M POIs) into Supabase.
  * Queries the public S3 parquet directly via DuckDB — no download needed.
@@ -120,7 +121,7 @@ async function ingest() {
 
       for (let i = 0; i < upserts.length; i += 500) {
         const chunk = upserts.slice(i, i + 500);
-        const { error } = await sb.from('places').upsert(chunk, { onConflict: 'external_id' });
+        const { error } = await sb.from(TABLES.places).upsert(chunk, { onConflict: 'external_id' });
         if (error) {
           console.error(`  ! upsert: ${error.message}`);
           break;

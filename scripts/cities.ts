@@ -14,6 +14,8 @@ export interface City {
 export const CITIES: City[] = [
   { slug: 'athens',         name: 'Athens',         country: 'Greece',        region: 'Europe',   bbox: [23.6,  37.9,  23.85, 38.05] },
   { slug: 'thessaloniki',   name: 'Thessaloniki',   country: 'Greece',        region: 'Europe',   bbox: [22.85, 40.55, 23.05, 40.7] },
+  { slug: 'mytilene',       name: 'Mytilene',       country: 'Greece',        region: 'Europe',   bbox: [26.08, 39.03, 26.22, 39.14] },
+  { slug: 'molyvos',        name: 'Molyvos',        country: 'Greece',        region: 'Europe',   bbox: [26.13, 39.35, 26.22, 39.42] },
   { slug: 'london',         name: 'London',         country: 'United Kingdom',region: 'Europe',   bbox: [-0.51, 51.28, 0.33,  51.69] },
   { slug: 'paris',          name: 'Paris',          country: 'France',        region: 'Europe',   bbox: [2.22,  48.81, 2.47,  48.91] },
   { slug: 'berlin',         name: 'Berlin',         country: 'Germany',       region: 'Europe',   bbox: [13.1,  52.34, 13.76, 52.68] },

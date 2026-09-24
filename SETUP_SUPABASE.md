@@ -66,8 +66,10 @@ you add will persist.
 
 In the Supabase dashboard, left sidebar → **Table Editor**. You should see:
 
-- `users`, `sessions`, `places`, `reviews`, `favorites`,
-- `merchant_claims`, `forum_posts`, `forum_replies`.
+- `smoking_users`, `smoking_sessions`, `smoking_places`, `smoking_reviews`, `smoking_favorites`,
+- `smoking_merchant_claims`, `smoking_forum_posts`, `smoking_forum_replies`, `smoking_flags`.
+
+All Smoking tables are prefixed (`smoking_*`) so they can live alongside other apps in the shared 6x7 Supabase project.
 
 All empty for now — that's correct.
 

@@ -847,14 +847,26 @@ function Assistant({ favorites, setRoute }) {
 
 function HomeView({ setRoute, favorites, toggleFav }) {
   // Real catalog counts — never advertise numbers the DB can't back up.
-  // Falls back to the editorial seed count until live data lands.
   const [stats, setStats] = useState(null);
+  const [featured, setFeatured] = useState({ status: "loading", places: [] });
   useEffect(() => {
     let alive = true;
     fetch("/api/stats")
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => { if (alive && j) setStats(j); })
       .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/places?source=seed&limit=12")
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => {
+        if (!alive) return;
+        const places = ok && Array.isArray(j.places) && j.places.length > 0 ? j.places : [];
+        setFeatured({ status: places.length ? "ok" : "fallback", places });
+      })
+      .catch(() => alive && setFeatured({ status: "fallback", places: [] }));
     return () => { alive = false; };
   }, []);
   const nf = (n) => (typeof n === "number" ? n.toLocaleString() : "—");
@@ -865,6 +877,20 @@ function HomeView({ setRoute, favorites, toggleFav }) {
   const countryCount = stats ? (stats.countries || null) : null;
   const noteCount = stats ? stats.notes : null;
   const placesLabel = placeCount != null ? nf(placeCount) : `${PLACES.length}+`;
+  const featuredPlaces = featured.status === "ok"
+    ? featured.places.slice(0, 9).map((p) => ({
+        id: p.id,
+        slug: p.external_id?.replace(/^seed:/, "") ?? p.id,
+        name: p.name,
+        neighborhood: p.neighborhood ?? "",
+        city: p.city ?? "",
+        country: p.country ?? "",
+        type: p.type ?? "spot",
+        photo: (PLACES.find((x) => x.id === p.external_id?.replace(/^seed:/, ""))?.photo) ?? ((featured.places.indexOf(p) % 6) + 1),
+        quote: p.description ?? "",
+        rating: null,
+      }))
+    : PLACES;
 
   return (
     <>
@@ -912,8 +938,14 @@ function HomeView({ setRoute, favorites, toggleFav }) {
       <section className="wrap section">
         <div className="section-head">
           <div>
-            <div className="eyebrow" style={{marginBottom: 12}}>This week's pages</div>
-            <h2>Nine worth the <em>flight</em>.</h2>
+            <div className="eyebrow" style={{marginBottom: 12}}>
+              {featured.status === "ok" ? "Reader picks · live" : "This week's pages"}
+            </div>
+            <h2>
+              {featured.status === "ok"
+                ? <>Featured <em>spots</em>.</>
+                : <>Nine worth the <em>flight</em>.</>}
+            </h2>
           </div>
           <div className="right">
             <a href="#" className="btn btn-ghost" onClick={(e)=>{e.preventDefault(); setRoute("places");}}>
@@ -923,8 +955,8 @@ function HomeView({ setRoute, favorites, toggleFav }) {
         </div>
 
         <div className="featured-grid">
-          {PLACES.map((p, i) => (
-            <article key={p.id} className="spot-card" onClick={() => setRoute("places")}>
+          {featuredPlaces.map((p, i) => (
+            <a key={p.id} href={`/place/${p.id}`} className="spot-card" style={{textDecoration:"none", color:"inherit"}}>
               <div className="spot-photo">
                 <Photo n={p.photo} />
               </div>
@@ -934,15 +966,19 @@ function HomeView({ setRoute, favorites, toggleFav }) {
                 </div>
                 <h3 className="spot-name">{p.name}</h3>
                 <div className="spot-meta">
-                  <span>{p.neighborhood}, {p.country}</span>
+                  <span>{p.neighborhood ? `${p.neighborhood}, ` : ""}{p.country}</span>
                   <span className="dot" aria-hidden="true"></span>
                   <span>{p.type}</span>
-                  <span className="dot" aria-hidden="true"></span>
-                  <span>★ {p.rating.toFixed(1)}</span>
+                  {p.rating != null && (
+                    <>
+                      <span className="dot" aria-hidden="true"></span>
+                      <span>★ {p.rating.toFixed(1)}</span>
+                    </>
+                  )}
                 </div>
-                <p className="spot-quote">&ldquo;{p.quote}&rdquo;</p>
+                <p className="spot-quote">{p.quote ? `“${p.quote}”` : ""}</p>
               </div>
-            </article>
+            </a>
           ))}
         </div>
       </section>
@@ -1661,8 +1697,7 @@ function ForumView({ user, onSignIn }) {
   const [submitNeedsVerify, setSubmitNeedsVerify] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch real posts on mount, prepend them to the editorial seed so the page
-  // is never empty even if Supabase isn't configured yet.
+  // Fetch real posts from the API. Fall back to editorial seed only when DB is empty.
   useEffect(() => {
     let alive = true;
     fetch("/api/forum/posts?limit=50")
@@ -1677,9 +1712,11 @@ function ForumView({ user, onSignIn }) {
           date: new Date(p.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
           body: p.body,
           tags: p.category ? [p.category] : [],
-          replies: 0, likes: 0, liked: false,
+          replies: p.forum_replies?.[0]?.count ?? 0,
+          likes: 0,
+          liked: false,
         }));
-        if (mapped.length) setThreads([...mapped, ...THREADS]);
+        setThreads(mapped.length ? mapped : THREADS);
       })
       .catch(() => {});
     return () => { alive = false; };

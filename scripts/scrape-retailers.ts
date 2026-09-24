@@ -1,3 +1,4 @@
+import { TABLES } from '../lib/supabase/tables';
 /**
  * Scrape retailer chain store-locators with Playwright.
  * Driven by the registry in scripts/retailers.ts.
@@ -68,7 +69,7 @@ async function main() {
       for (let i = 0; i < rows.length; i += 500) {
         const chunk = rows.slice(i, i + 500);
         const { error } = await sb
-          .from('places')
+          .from(TABLES.places)
           .upsert(chunk, { onConflict: 'external_id' });
         if (error) {
           console.error(`  ! upsert: ${error.message}`);

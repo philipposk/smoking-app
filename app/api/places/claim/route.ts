@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireWriter, currentUser } from '@/lib/auth/session';
 import { writeLimit } from '@/lib/rate-limit';
+import { TABLES } from '@/lib/supabase/tables';
 
 // Accept either a real DB place (UUID) OR a freeform reference to a place
 // that exists only in the design's editorial seed. Admin reconciles later.
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data, error } = await supabaseAdmin()
-    .from('merchant_claims')
+    .from(TABLES.merchantClaims)
     .insert({
       place_id: body.placeId ?? null,
       place_ref: body.placeRef ?? null,
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const placeId = request.nextUrl.searchParams.get('placeId');
-  let q = supabaseAdmin().from('merchant_claims').select('*');
+  let q = supabaseAdmin().from(TABLES.merchantClaims).select('*');
   if ((user as any).role !== 'admin') q = q.eq('user_id', user.id);
   if (placeId) q = q.eq('place_id', placeId);
 

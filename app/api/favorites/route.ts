@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { currentUser } from '@/lib/auth/session';
+import { TABLES } from '@/lib/supabase/tables';
 
 export async function GET() {
   const user = await currentUser();
   if (!user) return NextResponse.json({ favorites: [] });
 
   const { data, error } = await supabaseAdmin()
-    .from('favorites')
-    .select('place_id, created_at, places:places(*)')
+    .from(TABLES.favorites)
+    .select('place_id, created_at, places:smoking_places(*)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { error } = await supabaseAdmin()
-    .from('favorites')
+    .from(TABLES.favorites)
     .upsert({ user_id: user.id, place_id: parsed.placeId }, { onConflict: 'user_id,place_id' });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -46,7 +47,7 @@ export async function DELETE(request: NextRequest) {
   if (!placeId) return NextResponse.json({ error: 'placeId required' }, { status: 400 });
 
   const { error } = await supabaseAdmin()
-    .from('favorites')
+    .from(TABLES.favorites)
     .delete()
     .eq('user_id', user.id)
     .eq('place_id', placeId);

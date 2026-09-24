@@ -8,11 +8,19 @@ export function supabaseAdmin(): SupabaseClient {
   if (cached) return cached;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   if (!url || !serviceKey) {
     throw new Error(
       'Supabase env vars missing. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local. See SETUP_SUPABASE.md.'
+    );
+  }
+
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+    console.warn(
+      '[supabase] SUPABASE_SERVICE_ROLE_KEY unset — using anon key (reads only; writes may fail).',
     );
   }
 

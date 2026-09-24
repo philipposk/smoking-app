@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import PlaceDetail from './PlaceDetail';
+import { TABLES } from '@/lib/supabase/tables';
 
 interface Props {
   params: { id: string };
@@ -13,15 +14,15 @@ async function loadPlace(idOrSlug: string) {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
   const col = isUuid ? 'id' : 'external_id';
   const value = isUuid ? idOrSlug : `seed:${idOrSlug}`;
-  const { data } = await sb.from('places').select('*').eq(col, value).maybeSingle();
+  const { data } = await sb.from(TABLES.places).select('*').eq(col, value).maybeSingle();
   return data;
 }
 
 async function loadReviews(placeId: string) {
   const sb = supabaseAdmin();
   const { data } = await sb
-    .from('reviews')
-    .select('id, rating, body, created_at, users:users(username, avatar_url)')
+    .from(TABLES.reviews)
+    .select('id, rating, body, created_at, users:smoking_users(username, avatar_url)')
     .eq('place_id', placeId)
     .order('created_at', { ascending: false });
   return data ?? [];

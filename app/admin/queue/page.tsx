@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { currentUser } from '@/lib/auth/session';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import AdminQueue from './AdminQueue';
+import { TABLES } from '@/lib/supabase/tables';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export default async function Page() {
 
   const sb = supabaseAdmin();
   const { data: flags } = await sb
-    .from('flags')
+    .from(TABLES.flags)
     .select('*, reporter:users!reporter_user_id(username)')
     .eq('status', 'open')
     .order('created_at', { ascending: false })

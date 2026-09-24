@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { TABLES } from '@/lib/supabase/tables';
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token');
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest) {
 
   const sb = supabaseAdmin();
   const { data: user } = await sb
-    .from('users')
+    .from(TABLES.users)
     .select('id, email_verify_expires_at')
     .eq('email_verify_token', token)
     .maybeSingle();
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { error } = await sb
-    .from('users')
+    .from(TABLES.users)
     .update({
       email_verified: true,
       email_verify_token: null,

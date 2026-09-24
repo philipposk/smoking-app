@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { currentUser } from '@/lib/auth/session';
 import { authLimit } from '@/lib/rate-limit';
 import { sendEmail } from '@/lib/email';
+import { TABLES } from '@/lib/supabase/tables';
 
 // Resend the email-verification link for the signed-in user.
 // Rate-limited via authLimit (10/min/IP). No-op if already verified.
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   const { error } = await sb
-    .from('users')
+    .from(TABLES.users)
     .update({
       email_verify_token: token,
       email_verify_expires_at: expires.toISOString(),

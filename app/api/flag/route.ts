@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { currentUser } from '@/lib/auth/session';
 import { writeLimit } from '@/lib/rate-limit';
+import { TABLES } from '@/lib/supabase/tables';
 
 // Flag a place, review, post, or reply for moderator review.
 // Requires migration 0003_flags.sql to create the flags table.
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data, error } = await supabaseAdmin()
-    .from('flags')
+    .from(TABLES.flags)
     .insert({
       target_type: body.targetType,
       target_id: body.targetId,

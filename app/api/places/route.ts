@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireWriter, currentUser } from '@/lib/auth/session';
 import { writeLimit } from '@/lib/rate-limit';
+import { TABLES } from '@/lib/supabase/tables';
 
 // Only the columns the list/map/favorites UI actually reads. Excludes heavy
 // or private fields (notes, contributed_by, merchant_user_id, timestamps) so
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest) {
   const type = p.get('type');
   const country = p.get('country');
   const city = p.get('city');
+  const source = p.get('source');
   const q = p.get('q');
   const externalId = p.get('external_id');
   // Repeatable: ?external_id=seed:a&external_id=seed:b → IN-query.
@@ -40,7 +42,7 @@ export async function GET(request: NextRequest) {
   }
 
   let query = supabaseAdmin()
-    .from('places')
+    .from(TABLES.places)
     .select(LIST_COLUMNS)
     .order('id', { ascending: true })
     .limit(limit);
@@ -48,6 +50,7 @@ export async function GET(request: NextRequest) {
   if (type) query = query.eq('type', type);
   if (country) query = query.eq('country', country);
   if (city) query = query.eq('city', city);
+  if (source) query = query.eq('source', source);
   if (q) query = query.ilike('name', `%${q}%`);
   if (externalIds.length > 1) query = query.in('external_id', externalIds);
   else if (externalId) query = query.eq('external_id', externalId);
@@ -100,7 +103,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data, error } = await supabaseAdmin()
-    .from('places')
+    .from(TABLES.places)
     .insert({
       ...body,
       source: 'user',

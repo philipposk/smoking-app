@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { TABLES } from '@/lib/supabase/tables';
 import type { User } from '@/lib/supabase/types';
 
 const COOKIE_NAME = 'sb_session';
@@ -38,7 +39,7 @@ export async function createSession(userId: string): Promise<void> {
   const sb = supabaseAdmin();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 86400_000);
   const { data, error } = await sb
-    .from('sessions')
+    .from(TABLES.sessions)
     .insert({ user_id: userId, expires_at: expiresAt.toISOString() })
     .select('id')
     .single();
@@ -58,7 +59,7 @@ export async function destroySession(): Promise<void> {
   if (raw) {
     const sessionId = unpack(raw);
     if (sessionId) {
-      await supabaseAdmin().from('sessions').delete().eq('id', sessionId);
+      await supabaseAdmin().from(TABLES.sessions).delete().eq('id', sessionId);
     }
   }
   cookies().delete(COOKIE_NAME);
@@ -72,19 +73,19 @@ export async function currentUser(): Promise<User | null> {
 
   const sb = supabaseAdmin();
   const { data: session } = await sb
-    .from('sessions')
+    .from(TABLES.sessions)
     .select('user_id, expires_at')
     .eq('id', sessionId)
     .maybeSingle();
 
   if (!session) return null;
   if (new Date(session.expires_at as string) < new Date()) {
-    await sb.from('sessions').delete().eq('id', sessionId);
+    await sb.from(TABLES.sessions).delete().eq('id', sessionId);
     return null;
   }
 
   const { data: user } = await sb
-    .from('users')
+    .from(TABLES.users)
     .select('id, username, email, role, avatar_url, bio, created_at, email_verified')
     .eq('id', session.user_id)
     .maybeSingle();
