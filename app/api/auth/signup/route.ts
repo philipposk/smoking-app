@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { trackExternalAccess } from '@/lib/app-access-external';
 import { createSession } from '@/lib/auth/session';
 import { authLimit } from '@/lib/rate-limit';
 import { sendEmail } from '@/lib/email';
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
   }
 
   await createSession((user as any).id as string);
+  await trackExternalAccess(user as any, 'signup');
 
   return NextResponse.json({ user });
 }

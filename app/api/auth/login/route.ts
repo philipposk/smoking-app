@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { trackExternalAccess } from '@/lib/app-access-external';
 import { createSession } from '@/lib/auth/session';
 import { authLimit } from '@/lib/rate-limit';
 import { TABLES } from '@/lib/supabase/tables';
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
   }
 
   await createSession((user as any).id as string);
+  await trackExternalAccess(user as any, 'login');
 
   const { password_hash: _drop, ...safe } = user as any;
   return NextResponse.json({ user: safe });
