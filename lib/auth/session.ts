@@ -1,97 +1,49 @@
-import { cookies } from 'next/headers';
-import { createHmac, timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseServer } from '@/lib/supabase/server';
 import { TABLES } from '@/lib/supabase/tables';
 import type { User } from '@/lib/supabase/types';
 
-const COOKIE_NAME = 'sb_session';
-const SESSION_DAYS = 30;
+// Auth = shared 6x7 Supabase Auth (cookie sb-6x7-auth on .6x7.gr).
+// The Smoking profile (username, role, avatar, bio) lives in smoking_users and is
+// linked to the login account by smoking_users.auth_user_id. Profile ids are
+// unchanged, so every table that references smoking_users(id) keeps working.
 
-function secret(): string {
-  const s = process.env.SESSION_SECRET;
-  if (!s || s.length < 32) {
-    throw new Error('SESSION_SECRET must be set (32+ chars). See SETUP_SUPABASE.md.');
-  }
-  return s;
-}
+const PROFILE_COLS = 'id, username, email, role, avatar_url, bio, created_at, email_verified';
 
-function sign(value: string): string {
-  return createHmac('sha256', secret()).update(value).digest('base64url');
-}
-
-function pack(sessionId: string): string {
-  return `${sessionId}.${sign(sessionId)}`;
-}
-
-function unpack(token: string): string | null {
-  const dot = token.lastIndexOf('.');
-  if (dot < 0) return null;
-  const sessionId = token.slice(0, dot);
-  const givenSig = token.slice(dot + 1);
-  const expectedSig = sign(sessionId);
-  const a = Buffer.from(givenSig);
-  const b = Buffer.from(expectedSig);
-  if (a.length !== b.length) return null;
-  return timingSafeEqual(a, b) ? sessionId : null;
-}
-
-export async function createSession(userId: string): Promise<void> {
-  const sb = supabaseAdmin();
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 86400_000);
-  const { data, error } = await sb
-    .from(TABLES.sessions)
-    .insert({ user_id: userId, expires_at: expiresAt.toISOString() })
-    .select('id')
-    .single();
-  if (error || !data) throw new Error(error?.message ?? 'session insert failed');
-
-  cookies().set(COOKIE_NAME, pack(data.id as string), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    expires: expiresAt,
-  });
-}
-
-export async function destroySession(): Promise<void> {
-  const raw = cookies().get(COOKIE_NAME)?.value;
-  if (raw) {
-    const sessionId = unpack(raw);
-    if (sessionId) {
-      await supabaseAdmin().from(TABLES.sessions).delete().eq('id', sessionId);
-    }
-  }
-  cookies().delete(COOKIE_NAME);
-}
-
+/** The signed-in Smoking profile, or null. Every route/page uses this. */
 export async function currentUser(): Promise<User | null> {
-  const raw = cookies().get(COOKIE_NAME)?.value;
-  if (!raw) return null;
-  const sessionId = unpack(raw);
-  if (!sessionId) return null;
-
-  const sb = supabaseAdmin();
-  const { data: session } = await sb
-    .from(TABLES.sessions)
-    .select('user_id, expires_at')
-    .eq('id', sessionId)
-    .maybeSingle();
-
-  if (!session) return null;
-  if (new Date(session.expires_at as string) < new Date()) {
-    await sb.from(TABLES.sessions).delete().eq('id', sessionId);
-    return null;
-  }
-
-  const { data: user } = await sb
+  const { data } = await supabaseServer().auth.getUser();
+  const authUser = data.user;
+  if (!authUser) return null;
+  const { data: profile } = await supabaseAdmin()
     .from(TABLES.users)
-    .select('id, username, email, role, avatar_url, bio, created_at, email_verified')
-    .eq('id', session.user_id)
+    .select(PROFILE_COLS)
+    .eq('auth_user_id', authUser.id)
     .maybeSingle();
-
-  return (user as unknown as User) ?? null;
+  if (!profile) return null;
+  const p = profile as unknown as User;
+  // Supabase owns email confirmation now; keep the profile flag in step.
+  if (!p.email_verified && authUser.email_confirmed_at) {
+    p.email_verified = true;
+    await supabaseAdmin().from(TABLES.users).update({ email_verified: true }).eq('id', p.id);
+  }
+  return p;
 }
+
+/** Signs out of the shared session (all *.6x7.gr apps share it). */
+export async function destroySession(): Promise<void> {
+  await supabaseServer().auth.signOut();
+}
+
+/** Resolve "username or email" to the login email (Supabase signs in by email). */
+export async function loginEmailFor(identifier: string): Promise<string | null> {
+  const id = identifier.trim();
+  if (id.includes('@')) return id.toLowerCase();
+  const { data } = await supabaseAdmin().from(TABLES.users).select('email').eq('username', id).maybeSingle();
+  return (data as { email?: string } | null)?.email?.toLowerCase() ?? null;
+}
+
+export { PROFILE_COLS };
 
 // Email-verification gate for write endpoints.
 // If REQUIRE_EMAIL_VERIFIED is set OR a Resend key is configured (production
