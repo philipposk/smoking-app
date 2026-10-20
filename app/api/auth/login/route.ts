@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { supabaseAdmin } from '@/lib/supabase/admin';
-import { trackExternalAccess } from '@/lib/app-access-external';
-import { createSession } from '@/lib/auth/session';
+import { supabaseServer } from '@/lib/supabase/server';
+import { loginEmailFor } from '@/lib/auth/session';
+import { ensureProfile } from '@/lib/auth/profile';
 import { authLimit } from '@/lib/rate-limit';
-import { TABLES } from '@/lib/supabase/tables';
 
 const Body = z.object({
-  username: z.string().trim().min(1),
+  username: z.string().trim().min(1), // username or email
   password: z.string().min(1),
 });
 
@@ -23,24 +21,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 
-  const sb = supabaseAdmin();
-  // Accept either username or email. Two separate eq queries avoid PostgREST
-  // filter-string interpolation entirely.
-  const identifier = parsed.username;
-  const cols = 'id, username, email, role, avatar_url, bio, created_at, password_hash';
-  const [{ data: byUser }, { data: byEmail }] = await Promise.all([
-    sb.from(TABLES.users).select(cols).eq('username', identifier).maybeSingle(),
-    sb.from(TABLES.users).select(cols).eq('email', identifier.toLowerCase()).maybeSingle(),
-  ]);
-  const user = byUser ?? byEmail;
+  const email = await loginEmailFor(parsed.username);
+  if (!email) return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 });
 
-  if (!user || !(await bcrypt.compare(parsed.password, (user as any).password_hash))) {
-    return NextResponse.json({ error: 'Invalid username or password' }, { status: 401 });
+  // Shared 6x7 login: sets the sb-6x7-auth cookie (valid on every *.6x7.gr app).
+  const { data, error } = await supabaseServer().auth.signInWithPassword({ email, password: parsed.password });
+  if (error || !data.user) {
+    const unconfirmed = /confirm/i.test(error?.message ?? '');
+    return NextResponse.json(
+      { error: unconfirmed ? 'Confirm your email first. Check your inbox.' : 'Invalid username or password' },
+      { status: unconfirmed ? 403 : 401 },
+    );
   }
 
-  await createSession((user as any).id as string);
-  await trackExternalAccess(user as any, 'login');
-
-  const { password_hash: _drop, ...safe } = user as any;
-  return NextResponse.json({ user: safe });
+  const user = await ensureProfile(data.user);
+  if (!user) return NextResponse.json({ error: 'Could not load your profile' }, { status: 500 });
+  return NextResponse.json({ user });
 }
