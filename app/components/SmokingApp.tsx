@@ -2246,6 +2246,10 @@ function AuthModal({ onClose, onAuthed }) {
         setErr(j.error || `Failed (HTTP ${res.status})`);
         return;
       }
+      if (j.needsConfirmation) {
+        setErr("Almost done: check your inbox and confirm your email, then sign in.");
+        return;
+      }
       onAuthed(j.user);
     } catch {
       setErr("Network error.");
