@@ -16,6 +16,14 @@ export async function ensureProfile(
   if (existing) return existing as unknown as User;
 
   const email = (authUser.email ?? '').toLowerCase();
+  // An older Smoking profile with this email that isn't linked yet (pre-cutover data):
+  // linking is an owner decision (docs/sql/supabase-auth-02-cutover.sql), so don't
+  // create a duplicate or guess here.
+  const { data: unlinked } = await sb.from(TABLES.users).select('id').eq('email', email).is('auth_user_id', null).maybeSingle();
+  if (unlinked) {
+    console.error('ensureProfile: unlinked legacy profile exists for this account; run the cutover SQL');
+    return null;
+  }
   const base = (wantedUsername || email.split('@')[0] || 'user').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0, 24) || 'user';
   for (let i = 0; i < 5; i++) {
     const username = i === 0 ? base : `${base}${Math.floor(1000 + Math.random() * 9000)}`;
