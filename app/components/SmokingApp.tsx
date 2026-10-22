@@ -2363,6 +2363,14 @@ async function resolveSlugToUuid(slug, cache) {
 function App() {
   const [route, setRoute] = useState("home");
   const [theme, setTheme] = useState("light");
+  // true until the person picks Light or Dark: follow the phone or computer, save nothing.
+  const [followOs, setFollowOs] = useState(true);
+  const followOsRef = useRef(true);
+  const pickTheme = (next: string) => {
+    followOsRef.current = false;
+    setFollowOs(false);
+    setTheme(next);
+  };
   // Favorites are slug ids tied to the editorial seed. Always written to
   // localStorage (so logged-out users keep their list). When the user is
   // signed in AND the seed-loader has run, each toggle is also mirrored to
@@ -2380,16 +2388,26 @@ function App() {
   // Restore the saved theme once on mount (before paint via the inline script
   // in layout, this just syncs React state to what's already applied).
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("theme");
-      if (saved === "dark" || saved === "light") setTheme(saved);
-    } catch {}
+    let saved: string | null = null;
+    try { saved = localStorage.getItem("theme"); } catch {}
+    if (saved === "dark" || saved === "light") {
+      followOsRef.current = false;
+      setFollowOs(false);
+      setTheme(saved);
+      return;
+    }
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const sync = () => { if (followOsRef.current) setTheme(mq.matches ? "dark" : "light"); };
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    if (followOs) return;
     try { localStorage.setItem("theme", theme); } catch {}
-  }, [theme]);
+  }, [theme, followOs]);
 
   // Bootstrap session on mount
   useEffect(() => {
@@ -2499,7 +2517,7 @@ function App() {
         route={route}
         setRoute={setRoute}
         theme={theme}
-        setTheme={setTheme}
+        setTheme={pickTheme}
         favCount={favorites.length}
         user={user}
         onSignIn={() => setShowAuth(true)}
