@@ -38,11 +38,11 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={dir} data-theme="light">
       <head>
-        {/* Apply the saved theme before first paint to avoid a light→dark flash. */}
+        {/* Saved theme, or the OS setting if none, before first paint: no flash. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}",
+              "try{var t=localStorage.getItem('theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}",
           }}
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
