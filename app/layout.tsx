@@ -5,10 +5,22 @@ import './globals.css';
 import './design.css';
 import { RTL_LOCALES, type Locale } from '@/i18n/locales';
 
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://smoking.6x7.gr').replace(/\/$/, '');
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: 'Smoking — A field guide',
   description:
     'A field guide to places where you can still light up: smoke shops, terraces, courtyards, lookouts, kiosks, benches.',
+  applicationName: 'Smoking',
+  openGraph: {
+    type: 'website',
+    siteName: 'Smoking',
+    title: 'Smoking — A field guide',
+    description:
+      'A field guide to places where you can still light up: smoke shops, terraces, courtyards, lookouts, kiosks, benches.',
+  },
+  twitter: { card: 'summary' },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
