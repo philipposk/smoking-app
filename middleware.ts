@@ -16,6 +16,8 @@ import { trackAppAccess } from './lib/app-access';
 
 const COOKIE = 'age_ok';
 const GATE_PATH = '/age-gate';
+// Internal route rendered at `/` for visitors without the age cookie.
+const LANDING_PATH = '/welcome';
 
 // Paths that don't need the gate at all (legal pages, API, static assets).
 const PASSTHROUGH = [
@@ -78,6 +80,16 @@ export async function middleware(req: NextRequest) {
 
   if (req.cookies.get(COOKIE)?.value === '1') {
     return refreshSession(req, NextResponse.next({ request: req }));
+  }
+
+  // The home page shows a public landing to visitors who haven't passed the
+  // gate yet (and to search engines), so `/` has real, indexable content.
+  // The app itself stays behind the gate: "Enter" on the landing goes to
+  // /age-gate. A rewrite keeps the URL at `/`.
+  if (pathname === '/') {
+    const landing = req.nextUrl.clone();
+    landing.pathname = LANDING_PATH;
+    return NextResponse.rewrite(landing);
   }
 
   const url = req.nextUrl.clone();

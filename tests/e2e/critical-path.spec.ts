@@ -9,15 +9,25 @@ const hasSupabase =
   !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 test.describe('age gate', () => {
-  test('GET / redirects to /age-gate for new visitors', async ({ page }) => {
+  test('GET / shows the public, indexable landing to new visitors', async ({ page }) => {
     const res = await page.goto('/', { waitUntil: 'domcontentloaded' });
-    expect(res?.status()).toBe(200); // followed redirect
+    expect(res?.status()).toBe(200);
+    expect(new URL(page.url()).pathname).toBe('/');
+    await expect(page.getByRole('heading', { level: 1, name: /still light up/i })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /index, follow/);
+    // The app itself is not shown before the gate.
+    await expect(page.getByRole('link', { name: /^Index$/ })).toHaveCount(0);
+  });
+
+  test('app pages still redirect to /age-gate for new visitors', async ({ page }) => {
+    await page.goto('/map', { waitUntil: 'domcontentloaded' });
     expect(page.url()).toContain('/age-gate');
     await expect(page.getByRole('heading', { name: /legal smoking age/i })).toBeVisible();
   });
 
   test('confirming 18+ unlocks the home page', async ({ page, context }) => {
     await page.goto('/');
+    await page.getByRole('link', { name: /Open the guide/i }).click();
     await expect(page).toHaveURL(/\/age-gate/);
     await page.getByRole('button', { name: /I am of legal age/i }).click();
     // After the POST redirect the browser may land on localhost or 127.0.0.1
