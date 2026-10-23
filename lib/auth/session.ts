@@ -12,6 +12,8 @@ const PROFILE_COLS = 'id, username, email, role, avatar_url, bio, created_at, em
 
 /** The signed-in Smoking profile, or null. Every route/page uses this. */
 export async function currentUser(): Promise<User | null> {
+  // No Supabase configured (local dev, CI): nobody can be signed in.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return null;
   const { data } = await supabaseServer().auth.getUser();
   const authUser = data.user;
   if (!authUser) return null;
