@@ -22,7 +22,7 @@ jobs:
           node-version: 20
           cache: npm
       # duckdb is an optional native dep; don't fail install if it can't build.
-      - run: npm ci --no-optional
+      - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run typecheck:scripts
@@ -42,7 +42,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci --no-optional
+      - run: npm ci
       - name: Install Playwright (chromium)
         run: npx playwright install --with-deps chromium
       - name: Run e2e
