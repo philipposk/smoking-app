@@ -19,7 +19,11 @@ export const metadata: Metadata = {
     siteName: 'Smoking',
     title: 'Smoking — A field guide to places where you can still light up',
     description: DESCRIPTION,
+    // A page-level openGraph replaces the layout's, which drops the root
+    // opengraph-image.png the file convention adds; name it again here.
+    images: [{ url: '/opengraph-image.png', width: 1200, height: 630, alt: 'A free field guide to places where you can still light up, with a live map, photos and reviews.' }],
   },
+  twitter: { card: 'summary_large_image', images: ['/twitter-image.png'] },
 };
 
 const FEATURES = [
