@@ -30,6 +30,11 @@ const PASSTHROUGH = [
   '/place/',
   '/sitemap.xml',
   '/robots.txt',
+  // Share images and the AI-readable summary must load for crawlers and
+  // link unfurlers that never pass the gate.
+  '/opengraph-image',
+  '/twitter-image',
+  '/llms.txt',
   '/api/',
   '/_next/',
   '/manifest.json',

@@ -1,0 +1,17 @@
+# Smoking
+
+> Smoking is a free field guide to places where smoking is allowed: smoke shops, terraces, courtyards, lookouts, kiosks and benches, with a live map, photos and reviews from adults who use them. For adults at or above the legal smoking age where they live (18+ gate).
+
+- Live map of smoke-friendly terraces, courtyards, kiosks and smoke shops near you.
+- Listings come from open map data and are verified, with photos and reviews from the community.
+- Anyone can suggest a spot, add a photo or leave a review.
+- Works in several languages, in light or dark mode.
+- Smoking does not sell tobacco, nicotine or cannabis products.
+
+## Pages
+- https://smoking.6x7.gr/: About the guide (public)
+- https://smoking.6x7.gr/place/: Individual place pages (public)
+- https://smoking.6x7.gr/privacy: Privacy
+- https://smoking.6x7.gr/terms: Terms
+
+Made by 6x7: https://portfolio.6x7.gr
