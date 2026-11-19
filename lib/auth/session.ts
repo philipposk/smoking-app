@@ -34,7 +34,7 @@ export async function currentUser(): Promise<User | null> {
 
 /** Signs out of the shared session (all *.6x7.gr apps share it). */
 export async function destroySession(): Promise<void> {
-  await supabaseServer().auth.signOut();
+  await supabaseServer().auth.signOut({ scope: 'local' });
 }
 
 /** Resolve "username or email" to the login email (Supabase signs in by email). */
