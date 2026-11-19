@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     description:
       'A field guide to places where you can still light up: smoke shops, terraces, courtyards, lookouts, kiosks, benches.',
   },
-  twitter: { card: 'summary' },
+  twitter: { card: 'summary_large_image' },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
