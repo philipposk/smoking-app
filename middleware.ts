@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { sharedCookieOptions } from './lib/supabase/cookies';
+import { sharedCookieOptions, cookieOptionsForHost, hostFromHeaders } from './lib/supabase/cookies';
 import { trackAppAccess } from './lib/app-access';
 
 // Server-side age-gate enforcement. The client modal in
@@ -48,7 +48,7 @@ async function refreshSession(req: NextRequest, res: NextResponse): Promise<Next
   if (!url || !key || !req.cookies.getAll().some((c) => c.name === name || c.name.startsWith(`${name}.`))) return res;
   let response = res;
   const supabase = createServerClient(url, key, {
-    cookieOptions: sharedCookieOptions,
+    cookieOptions: cookieOptionsForHost(hostFromHeaders(req.headers)),
     cookies: {
       getAll() {
         return req.cookies.getAll();
